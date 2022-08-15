@@ -1,16 +1,17 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import PBKDF2PasswordHasher
+from django.contrib.auth.hashers import check_password
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
-from users.models import User
 
 from .permissions import UserPermissions
 from .serializers import (ChangePasswordSerializer, TokenSerializer,
                           UserSerializer)
+
+User = get_user_model()
 
 
 class CreateListRetrieveViewSet(mixins.CreateModelMixin,
@@ -53,10 +54,10 @@ class UserViewSet(CreateListRetrieveViewSet):
 def get_token(request):
     serializer = TokenSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
-    email = serializer.initial_data.get('email')
-    password = serializer.initial_data.get('password')
+    email = serializer.validated_data.get('email')
+    password = serializer.validated_data.get('password')
     user = get_object_or_404(User.objects.all(), email=email)
-    if not PBKDF2PasswordHasher().verify(password, user.password):
+    if not check_password(password, user.password):
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
     token = str(AccessToken().for_user(user))
     return Response({'auth_token': token}, status=status.HTTP_201_CREATED)
