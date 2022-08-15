@@ -1,6 +1,7 @@
 from unicodedata import name
 
 from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
 from django.db import models
 
 User = get_user_model()
@@ -9,7 +10,6 @@ class Ingredient(models.Model):
     name = models.CharField(
         'Ингредиент',
         max_length=200,
-        unique=True,
         help_text='Название ингредиента')
     measurement_unit = models.CharField(
         'Единица измерения',
@@ -54,7 +54,7 @@ class Recipe(models.Model):
               through='RecipesIngredients',
               through_fields=('recipe', 'ingredient'))
     tags = models.ManyToManyField(
-       'Tag',)
+       Tag)
     name = models.CharField(
         'Название рецепта',
         max_length=200,
@@ -66,16 +66,24 @@ class Recipe(models.Model):
     )
     cooking_time = models.IntegerField(
         'Время приготовления',
-        help_text='Время приготовления'
+        help_text='Время приготовления',
+        validators=[MinValueValidator(1),]
     )
     image = models.ImageField(
         'Картинка',
         upload_to='recipes/'
     )
+    author = models.ForeignKey(
+        User,
+        related_name='recipes',
+        on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
+
+    def __str__(self):
+        return self.name
 
 
 class RecipesIngredients(models.Model):

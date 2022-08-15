@@ -1,6 +1,6 @@
 from django.conf.urls import include
 from django.urls import path
-from recipes.views import IngredientViewSet, TagViewSet
+from recipes.views import IngredientViewSet, RecipeViewSet, TagViewSet
 
 from .routers import CustomRouter
 from .views import UserViewSet, delete_token, get_token, set_password
@@ -8,7 +8,8 @@ from .views import UserViewSet, delete_token, get_token, set_password
 custom_router = CustomRouter()
 custom_router.register('users', UserViewSet, basename='users')
 custom_router.register('ingredients', IngredientViewSet, basename='ingredients')
-custom_router.register('tags', TagViewSet, basename='ingredients')
+custom_router.register('tags', TagViewSet, basename='tags')
+custom_router.register('recipes', RecipeViewSet, basename='recipes')
 
 urlpatterns = [
     path('users/set_password/', set_password, name='set_password'),
