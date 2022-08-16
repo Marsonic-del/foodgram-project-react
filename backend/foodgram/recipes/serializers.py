@@ -5,6 +5,7 @@ from urllib import request
 from api.serializers import UserSerializer
 from django.core.files.base import ContentFile
 from drf_extra_fields.fields import Base64ImageField
+from foodgram.settings import HOST_NAME, MEDIA_ROOT
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
@@ -25,11 +26,13 @@ class TagSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'color', 'slug')
         model = Tag
 
+
 class RecipesIngredientsSerializer(serializers.ModelSerializer):
     
     class Meta:
         fields = ('id', 'recipe', 'ingredient', 'amount')
         model = RecipesIngredients
+
 
 class IngredientsInRercipeSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -39,12 +42,28 @@ class IngredientsInRercipeSerializer(serializers.Serializer):
         fields = ('id', 'amount', )
 
 
+class CustomImageField(serializers.Field):
+    def to_representation(self, value):
+        image_url = f'{HOST_NAME}media/{value.name}'
+        return image_url
+
+    def to_internal_value(self, data):
+        try:
+           format, imgstr = data.split(';base64,')
+           ext = format.split('/')[-1]
+           data = ContentFile(base64.b64decode(imgstr), name='image.' + ext)
+        except ValueError:
+            raise serializers.ValidationError('Некорректные данные картинки')
+        return data
+
+
 class RecipeSerializer(serializers.ModelSerializer):
     ingredients = IngredientsInRercipeSerializer(many=True)
-    #tags = TagSerializer(many=True, read_only=True)
-    image = serializers.CharField()
+    #image = serializers.CharField()
+    image = CustomImageField()
     author = serializers.PrimaryKeyRelatedField(
         read_only=True, default=serializers.CurrentUserDefault())
+
     class Meta:
         fields = ('id', 'name', 'image', 'ingredients', 'tags', 'text', 'cooking_time', 'author')
         model = Recipe
@@ -52,22 +71,12 @@ class RecipeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         pop_ingredients = validated_data.pop('ingredients')
         pop_tags = validated_data.pop('tags')
-        pop_image = validated_data.pop('image')
-        '''image_data = validated_data.pop('image')
-        print(image_data)
-        format, imgstr = image_data.split(';base64,')
-        name, ext = format.split('/')
-
-        data = ContentFile(base64.b64decode(imgstr))  
-        file_name = f'{name}.{ext}'''
-        format, imgstr = pop_image.split(';base64,')
-        ext = format.split('/')[-1]
-        data = ContentFile(base64.b64decode(imgstr), name='temp.' + ext)
+        #pop_image = validated_data.pop('image')
+        
         recipe = Recipe.objects.create(author=self.context['request'].user,
-                                       image=data,
+                                       #image=data,
                                        **validated_data,
                                       )
-        #recipe.image.save(file_name, data, save=True)
         for ingredient in pop_ingredients:
             recipe_ingredient = get_object_or_404(Ingredient.objects.all(), id=ingredient['id'])
             RecipesIngredients.objects.create(
@@ -76,6 +85,16 @@ class RecipeSerializer(serializers.ModelSerializer):
                 amount=ingredient['amount'])
         for tag in pop_tags:
             recipe.tags.add(tag)
-        print(self.data)
         return recipe
+
+
+class ResponseRecipeSerializer(serializers.ModelSerializer):
+    tags = TagSerializer(many=True)
+    ingredients = IngredientSerializer(many=True)
+    author = UserSerializer()
+    image = CustomImageField()
+
+    class Meta:
+        fields = ('id', 'name', 'image', 'ingredients', 'tags', 'text', 'cooking_time', 'author')
+        model = Recipe
 

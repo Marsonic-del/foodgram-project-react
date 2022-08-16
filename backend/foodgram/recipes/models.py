@@ -71,7 +71,7 @@ class Recipe(models.Model):
     )
     image = models.ImageField(
         'Картинка',
-        upload_to='recipes/'
+        upload_to='recipes/images/'
     )
     author = models.ForeignKey(
         User,
