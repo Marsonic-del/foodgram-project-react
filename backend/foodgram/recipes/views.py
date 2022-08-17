@@ -31,21 +31,35 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
 class RecipeViewSet(viewsets.ModelViewSet):
     serializer_class = RecipeSerializer
     queryset = Recipe.objects.all()
-    pagination_class = None
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context.update({"request": self.request})
         return context
 
+    def list(self, request, *args, **kwargs):
+        queryset = Recipe.objects.all()
+        response_data = ResponseRecipeSerializer(queryset,many=True).data
+        for recipe in response_data:
+            for ingredient in recipe['ingredients']:
+                recipe_ingredient = get_object_or_404(Ingredient.objects.all(),
+                                                  id=ingredient['id'])
+                recipe_object = get_object_or_404(queryset,
+                                                  id=recipe['id'])
+                ingredient['amount'] = get_object_or_404(RecipesIngredients.objects.all(),
+                                                     recipe=recipe_object,
+                                                     ingredient=recipe_ingredient).amount
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            return self.get_paginated_response(response_data)
+
+        return Response(response_data)
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         recipe = self.perform_create(serializer)
         response_data = ResponseRecipeSerializer(recipe).data
-        print(request.build_absolute_uri(response_data['image']))
-        abs_image_url = request.build_absolute_uri(response_data['image'])
-        #response_data['image'] = abs_image_url
         for ingredient in response_data['ingredients']:
             recipe_ingredient = get_object_or_404(Ingredient.objects.all(),
                                                   id=ingredient['id'])
