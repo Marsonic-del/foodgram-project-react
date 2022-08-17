@@ -37,6 +37,34 @@ class RecipeViewSet(viewsets.ModelViewSet):
         context.update({"request": self.request})
         return context
 
+    def update(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        recipe = self.perform_update(serializer)
+        response_data = ResponseRecipeSerializer(recipe).data
+        for ingredient in response_data['ingredients']:
+            recipe_ingredient = get_object_or_404(Ingredient.objects.all(),
+                                                  id=ingredient['id'])
+            ingredient['amount'] = get_object_or_404(RecipesIngredients.objects.all(),
+                                                     recipe=recipe,
+                                                     ingredient=recipe_ingredient).amount
+        return Response(response_data)
+
+    def perform_update(self, serializer):
+        return serializer.save()
+
+    def retrieve(self, request, *args, **kwargs):
+        recipe = self.get_object()
+        response_data = ResponseRecipeSerializer(recipe).data
+        for ingredient in response_data['ingredients']:
+            recipe_ingredient = get_object_or_404(Ingredient.objects.all(),
+                                                  id=ingredient['id'])
+            ingredient['amount'] = get_object_or_404(RecipesIngredients.objects.all(),
+                                                     recipe=recipe,
+                                                     ingredient=recipe_ingredient).amount
+        return Response(response_data)
+
     def list(self, request, *args, **kwargs):
         queryset = Recipe.objects.all()
         response_data = ResponseRecipeSerializer(queryset,many=True).data

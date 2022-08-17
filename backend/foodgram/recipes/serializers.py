@@ -3,6 +3,7 @@ from email.mime import image
 from urllib import request
 
 from api.serializers import UserSerializer
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.base import ContentFile
 from drf_extra_fields.fields import Base64ImageField
 from foodgram.settings import HOST_NAME, MEDIA_ROOT
@@ -68,15 +69,28 @@ class RecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'ingredients', 'tags', 'text', 'cooking_time', 'author')
         model = Recipe
 
+    def update(self, recipe, validated_data):
+        pop_ingredients = validated_data.pop('ingredients')
+        pop_tags = validated_data.pop('tags')
+        for attr, value in validated_data.items():
+            setattr(recipe, attr, value)
+        recipe.ingredients.clear()
+        for ingredient in pop_ingredients:
+            recipe_ingredient = get_object_or_404(Ingredient.objects.all(), id=ingredient['id'])
+            RecipesIngredients.objects.create(
+                recipe=recipe,
+                ingredient=recipe_ingredient,
+                amount=ingredient['amount'])
+        for tag in pop_tags:
+            recipe.tags.add(tag)
+        recipe.save()
+        return recipe
+
     def create(self, validated_data):
         pop_ingredients = validated_data.pop('ingredients')
         pop_tags = validated_data.pop('tags')
-        #pop_image = validated_data.pop('image')
-        
         recipe = Recipe.objects.create(author=self.context['request'].user,
-                                       #image=data,
-                                       **validated_data,
-                                      )
+                                      **validated_data)
         for ingredient in pop_ingredients:
             recipe_ingredient = get_object_or_404(Ingredient.objects.all(), id=ingredient['id'])
             RecipesIngredients.objects.create(

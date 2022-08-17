@@ -14,7 +14,8 @@ class CustomRouter(SimpleRouter):
         Route(
             url=r'^{prefix}/{lookup}/$',
             mapping={'get': 'retrieve',
-                     'patch': 'partial_update',
+                     'patch': 'update',
+                     'delete': 'destroy',
                     },
             name='{basename}-detail',
             detail=True,
