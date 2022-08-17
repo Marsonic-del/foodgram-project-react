@@ -9,6 +9,7 @@ custom_router = CustomRouter()
 custom_router.register('users', UserViewSet, basename='users')
 custom_router.register('ingredients', IngredientViewSet, basename='ingredients')
 custom_router.register('tags', TagViewSet, basename='tags')
+#custom_router.register(r"recipes/(?P<recipe_id>\d+)/favorite/?", FavoritesViewSet, basename='favorites')
 custom_router.register('recipes', RecipeViewSet, basename='recipes')
 
 urlpatterns = [

@@ -1,4 +1,4 @@
-from rest_framework.routers import Route, SimpleRouter
+from rest_framework.routers import DynamicRoute, Route, SimpleRouter
 
 
 class CustomRouter(SimpleRouter):
@@ -20,5 +20,11 @@ class CustomRouter(SimpleRouter):
             name='{basename}-detail',
             detail=True,
             initkwargs={'suffix': 'Detail'}
+        ),
+        DynamicRoute(
+            url=r'^{prefix}/{lookup}/{url_path}/$',
+            name='{basename}-{url_name}',
+            detail=True,
+            initkwargs={}
         )
     ]

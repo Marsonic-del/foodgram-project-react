@@ -10,8 +10,9 @@ from foodgram.settings import HOST_NAME, MEDIA_ROOT
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
+from rest_framework.validators import UniqueTogetherValidator
 
-from .models import Ingredient, Recipe, RecipesIngredients, Tag
+from .models import Favorites, Ingredient, Recipe, RecipesIngredients, Tag
 
 
 class IngredientSerializer(serializers.ModelSerializer):
@@ -60,7 +61,6 @@ class CustomImageField(serializers.Field):
 
 class RecipeSerializer(serializers.ModelSerializer):
     ingredients = IngredientsInRercipeSerializer(many=True)
-    #image = serializers.CharField()
     image = CustomImageField()
     author = serializers.PrimaryKeyRelatedField(
         read_only=True, default=serializers.CurrentUserDefault())
@@ -75,6 +75,7 @@ class RecipeSerializer(serializers.ModelSerializer):
         for attr, value in validated_data.items():
             setattr(recipe, attr, value)
         recipe.ingredients.clear()
+        recipe.tags.clear()
         for ingredient in pop_ingredients:
             recipe_ingredient = get_object_or_404(Ingredient.objects.all(), id=ingredient['id'])
             RecipesIngredients.objects.create(
@@ -112,3 +113,10 @@ class ResponseRecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'ingredients', 'tags', 'text', 'cooking_time', 'author')
         model = Recipe
 
+
+class FavoritesRecipeSerializer(serializers.ModelSerializer):
+    image = CustomImageField()
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'image', 'cooking_time')

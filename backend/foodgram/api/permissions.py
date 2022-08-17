@@ -8,3 +8,10 @@ class UserPermissions(permissions.BasePermission):
             return request.user.is_authenticated
         else:
             return True
+
+
+class RecipePermissions(permissions.BasePermission):
+
+    def has_permission(self, request, view):
+        return (request.method in permissions.SAFE_METHODS or
+                request.user.is_authenticated)

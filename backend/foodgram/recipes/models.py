@@ -1,3 +1,4 @@
+from tkinter import CASCADE
 from unicodedata import name
 
 from django.contrib.auth import get_user_model
@@ -98,3 +99,24 @@ class RecipesIngredients(models.Model):
         'Количество ингридиента',
         help_text='Количество ингридиента'
     )
+
+
+class Favorites(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        verbose_name = 'Избранное'
+        verbose_name_plural = 'Рецепты в избранном'
+        constraints = (
+            models.UniqueConstraint(
+                fields=['user', 'recipe'],
+                name='unique_user_recipe'
+            ),
+        )
