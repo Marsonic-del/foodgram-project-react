@@ -66,7 +66,7 @@ class CustomImageField(serializers.Field):
         return data
 
 
-'''class SubscribtionRecipeSerializer(serializers.ModelSerializer):
+class SubscribtionRecipeSerializer(serializers.ModelSerializer):
     image = CustomImageField()
 
     class Meta:
@@ -84,10 +84,10 @@ class SubscribtionUserSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'username', 'first_name', 'last_name', 'is_subscribed', 'recipes_count')
 
     def get_recipes_count(self, obj):
-        return obj.recipes.count()'''
+        return obj.recipes.count()
 
 
-class SubscribtionRecipeSerializer(serializers.ModelSerializer):
+'''class SubscribtionRecipeSerializer(serializers.ModelSerializer):
     image = CustomImageField()
 
     class Meta:
@@ -105,7 +105,7 @@ class SubscribtionUserSerializer(serializers.ModelSerializer):
         fields = ('id', 'email', 'username', 'first_name', 'last_name', 'is_subscribed', 'recipes_count', 'recipes')
 
     def get_recipes_count(self, obj):
-        return obj.recipes.count()
+        return obj.recipes.count()'''
 
 
 '*********************************************************************'
