@@ -1,22 +1,24 @@
 import imp
+import json
 from email import message
 
 from api.permissions import RecipePermissions
+from api.serializers import (FavoritesRecipeSerializer, IngredientSerializer,
+                             RecipeSerializer, ResponseRecipeSerializer,
+                             TagSerializer)
 from django import http
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
+from django.http import HttpResponseNotFound
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
 from .models import Favorites, Ingredient, Recipe, RecipesIngredients, Tag
-from .serializers import (FavoritesRecipeSerializer, IngredientSerializer,
-                          RecipeSerializer, ResponseRecipeSerializer,
-                          TagSerializer)
 
 User = get_user_model()
 
@@ -37,17 +39,17 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post', 'delete'])
     def favorite(self, request, pk=None):
-        recipe = get_object_or_404(Recipe, id=pk)
+        recipe = get_object_or_404(Recipe.objects.all(), id=pk)
         if request.method == 'POST':
             if Favorites.objects.filter(recipe=recipe).exists():
-                raise ValidationError(detail={'Избранное': 'Такая запись уже существует.'})
+                raise ValidationError(detail={'Избранное': 'Запись уже существует.'})
         
             Favorites.objects.create(user=request.user,
                                      recipe=recipe)
             serializer = FavoritesRecipeSerializer(recipe)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         if request.method == 'DELETE':
-            get_object_or_404(Favorites, recipe=recipe).delete()
+            get_object_or_404(Favorites.objects.all(), recipe=recipe).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_serializer_context(self):
@@ -118,29 +120,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return serializer.save()
 
 
-class CreateDestroyAPIView(mixins.DestroyModelMixin,
-                        mixins.CreateModelMixin,
-                        viewsets.GenericViewSet):
-    pass
-
-
-'''class FavoritesViewSet(CreateDestroyAPIView):
-    queryset = Favorites.objects.all()
-    serializer_class = FavoritesRecipeSerializer
-
-    def create(self, request, *args, **kwargs):
-        recipe_id = request.parser_context['view'].kwargs['recipe_id']
-        recipe = get_object_or_404(Recipe, id=recipe_id)
-        if Favorites.objects.filter(recipe=recipe).exists():
-            raise ValidationError(detail={'Избранное': 'Такая запись уже существует.'})
-        
-        fav = Favorites.objects.create(user=request.user,
-                                 recipe=recipe)
-        print(fav)
-        serializer = FavoritesRecipeSerializer(recipe)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def destroy(self, request, *args, **kwargs):
-        Favorites.objects.delete(
-            recipe=Recipe.objects.get(id=request.parser_context['view'].kwargs['pk']))
-        return Response(status=status.HTTP_204_NO_CONTENT)'''
+def error404(request, exception):
+    response_data = {}
+    response_data['detail'] = 'Not found.'
+    return HttpResponseNotFound(json.dumps(response_data), content_type="application/json")

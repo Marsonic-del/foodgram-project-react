@@ -22,6 +22,12 @@ class CustomRouter(SimpleRouter):
             initkwargs={'suffix': 'Detail'}
         ),
         DynamicRoute(
+            url=r'^{prefix}/{url_path}/$',
+            name='{basename}-{url_name}',
+            detail=False,
+            initkwargs={}
+        ),
+        DynamicRoute(
             url=r'^{prefix}/{lookup}/{url_path}/$',
             name='{basename}-{url_name}',
             detail=True,
