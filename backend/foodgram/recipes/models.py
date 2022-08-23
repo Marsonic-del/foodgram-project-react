@@ -122,3 +122,24 @@ class Favorites(models.Model):
                 name='unique_user_recipe'
             ),
         )
+
+
+class Shopping_cart(models.Model):
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE
+    )
+    recipe = models.ForeignKey(
+        Recipe,
+        on_delete=models.CASCADE
+    )
+
+    class Meta:
+        verbose_name = 'Список покупок'
+        verbose_name_plural = 'Списки покупок'
+        constraints = (
+            models.UniqueConstraint(
+                fields=['owner', 'recipe'],
+                name='unique_owner_recipe'
+            ),
+        )

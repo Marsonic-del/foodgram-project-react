@@ -5,20 +5,24 @@ from email import message
 from api.permissions import RecipePermissions
 from api.serializers import (FavoritesRecipeSerializer, IngredientSerializer,
                              RecipeSerializer, ResponseRecipeSerializer,
-                             TagSerializer)
+                             Shopping_cartRecipeSerializer, TagSerializer,
+                             UserSerializer)
 from django import http
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
+from django.db.models import Q, Sum
 from django.http import HttpResponseNotFound
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import get_object_or_404
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 
-from .models import Favorites, Ingredient, Recipe, RecipesIngredients, Tag
+from .models import (Favorites, Ingredient, Recipe, RecipesIngredients,
+                     Shopping_cart, Tag)
 
 User = get_user_model()
 
@@ -36,6 +40,35 @@ class RecipeViewSet(viewsets.ModelViewSet):
     serializer_class = RecipeSerializer
     queryset = Recipe.objects.all()
     permission_classes = (RecipePermissions,)
+    pagination_class = LimitOffsetPagination
+
+    @action(detail=False, methods=['get',], permission_classes=[IsAuthenticated])
+    def download_shopping_cart(self, request, pk=None):
+        file_content = 'Не забыть купить: '
+        recipes = Recipe.objects.filter(shopping_cart__owner=request.user)
+        recipes_with_ingredients = RecipesIngredients.objects.filter(recipe__in=recipes)
+        ingredients = Ingredient.objects.filter(recipesingredients__in=recipes_with_ingredients).distinct()
+        ins = ingredients.annotate(amount_sum=Sum('recipesingredients__amount', filter=Q(
+            recipesingredients__in=recipes_with_ingredients
+        )))
+        for i in ins.all():
+            file_content += f'{i.name} {i.amount_sum} {i.measurement_unit}'
+        return Response('Запись в списке покупок удалена', status=status.HTTP_204_NO_CONTENT)   
+
+    @action(detail=True, methods=['post', 'delete'])
+    def shopping_cart(self, request, pk=None):
+        recipe = get_object_or_404(Recipe, id=pk)
+        if request.method == 'POST':
+            if Shopping_cart.objects.filter(recipe=recipe, owner=request.user).exists():
+                raise ValidationError(detail={'Список покупок': 'Запись уже существует.'})
+        
+            Shopping_cart.objects.create(owner=request.user,
+                                     recipe=recipe)
+            serializer = Shopping_cartRecipeSerializer(recipe)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        if request.method == 'DELETE':
+            get_object_or_404(Shopping_cart, recipe=recipe, owner=request.user).delete()
+            return Response('Запись в списке покупок удалена', status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['post', 'delete'])
     def favorite(self, request, pk=None):
@@ -53,7 +86,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
             return Response(status=status.HTTP_204_NO_CONTENT)
 
     def get_serializer_context(self):
-        context = super().get_serializer_context()
+        context = super(RecipeViewSet, self).get_serializer_context()
         context.update({"request": self.request})
         return context
 
@@ -62,7 +95,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
         recipe = self.perform_update(serializer)
-        response_data = ResponseRecipeSerializer(recipe).data
+        response_data = ResponseRecipeSerializer(recipe,
+            context=self.get_serializer_context()).data
         for ingredient in response_data['ingredients']:
             recipe_ingredient = get_object_or_404(Ingredient.objects.all(),
                                                   id=ingredient['id'])
@@ -76,7 +110,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         recipe = self.get_object()
-        response_data = ResponseRecipeSerializer(recipe).data
+        response_data = ResponseRecipeSerializer(recipe,
+            context=self.get_serializer_context()).data
         for ingredient in response_data['ingredients']:
             recipe_ingredient = get_object_or_404(Ingredient.objects.all(),
                                                   id=ingredient['id'])
@@ -87,7 +122,8 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         queryset = Recipe.objects.all()
-        response_data = ResponseRecipeSerializer(queryset,many=True).data
+        response_data = ResponseRecipeSerializer(queryset,
+            many=True, context=self.get_serializer_context()).data
         for recipe in response_data:
             for ingredient in recipe['ingredients']:
                 recipe_ingredient = get_object_or_404(Ingredient.objects.all(),
@@ -104,10 +140,13 @@ class RecipeViewSet(viewsets.ModelViewSet):
         return Response(response_data)
 
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
+        serializer = RecipeSerializer(data=request.data,
+            context=self.get_serializer_context())
         serializer.is_valid(raise_exception=True)
         recipe = self.perform_create(serializer)
-        response_data = ResponseRecipeSerializer(recipe).data
+        response_serializer = ResponseRecipeSerializer(recipe,
+            context=self.get_serializer_context())
+        response_data = response_serializer.data
         for ingredient in response_data['ingredients']:
             recipe_ingredient = get_object_or_404(Ingredient.objects.all(),
                                                   id=ingredient['id'])

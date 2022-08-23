@@ -7,7 +7,7 @@ from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import get_object_or_404
-from rest_framework.pagination import PageNumberPagination
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from users.models import Subscription
@@ -29,9 +29,10 @@ class CreateListRetrieveViewSet(mixins.CreateModelMixin,
 
 
 class UserViewSet(CreateListRetrieveViewSet):
-    queryset = User.objects.get_queryset().order_by('id')
+    queryset = User.objects.all().order_by('id')
     serializer_class = UserSerializer
     permission_classes = (UserPermissions,)
+    pagination_class = LimitOffsetPagination
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -51,7 +52,7 @@ class UserViewSet(CreateListRetrieveViewSet):
     def get_object(self, request):
         if request.parser_context['kwargs']['pk'] == 'me':
             user_id = request.user.id
-            obj = get_object_or_404(User.objects.all(), id=user_id)
+            obj = get_object_or_404(User, id=user_id)
             return obj
         return super().get_object()
 

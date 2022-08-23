@@ -5,20 +5,29 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.core.files.base import ContentFile
 from foodgram.settings import HOST_NAME
-from recipes.models import Ingredient, Recipe, RecipesIngredients, Tag
+from recipes.models import (Ingredient, Recipe, RecipesIngredients,
+                            Shopping_cart, Tag)
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
+from users.models import Subscription
 
 User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
+    is_subscribed = serializers.SerializerMethodField()
     
     class Meta:
-        fields = ('email', 'username', 'first_name', 'last_name', 'id', 'password')
+        fields = ('email', 'username', 'first_name', 'last_name', 'id', 'password', 'is_subscribed')
         model = User
         extra_kwargs = {'password': {'write_only': True}}
+
+    def get_is_subscribed(self, obj):
+        if self.context['request'].user.is_anonymous:
+            return False
+        return Subscription.objects.filter(
+            author=obj, subscriber=self.context['request'].user).exists()
 
     def create(self, validated_data):
         user = User.objects.create_user(**validated_data)
@@ -142,8 +151,7 @@ class IngredientsInRercipeSerializer(serializers.Serializer):
 class RecipeSerializer(serializers.ModelSerializer):
     ingredients = IngredientsInRercipeSerializer(many=True)
     image = CustomImageField()
-    author = serializers.PrimaryKeyRelatedField(
-        read_only=True, default=serializers.CurrentUserDefault())
+    author = UserSerializer(read_only=True)
 
     class Meta:
         fields = ('id', 'name', 'image', 'ingredients', 'tags', 'text', 'cooking_time', 'author')
@@ -170,10 +178,9 @@ class RecipeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         pop_ingredients = validated_data.pop('ingredients')
         pop_tags = validated_data.pop('tags')
-        recipe = Recipe.objects.create(author=self.context['request'].user,
-                                      **validated_data)
+        recipe = Recipe.objects.create(author=self.context['request'].user, **validated_data)
         for ingredient in pop_ingredients:
-            recipe_ingredient = get_object_or_404(Ingredient.objects.all(), id=ingredient['id'])
+            recipe_ingredient = get_object_or_404(Ingredient, id=ingredient['id'])
             RecipesIngredients.objects.create(
                 recipe=recipe,
                 ingredient=recipe_ingredient,
@@ -186,15 +193,28 @@ class RecipeSerializer(serializers.ModelSerializer):
 class ResponseRecipeSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
     ingredients = IngredientSerializer(many=True)
-    author = UserSerializer()
+    author = UserSerializer(read_only=True)
     image = CustomImageField()
 
     class Meta:
         fields = ('id', 'name', 'image', 'ingredients', 'tags', 'text', 'cooking_time', 'author')
         model = Recipe
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # We pass the "upper serializer" context to the "nested one"
+        self.fields['author'].context.update(self.context)
+
 
 class FavoritesRecipeSerializer(serializers.ModelSerializer):
+    image = CustomImageField()
+
+    class Meta:
+        model = Recipe
+        fields = ('id', 'name', 'image', 'cooking_time')
+
+
+class Shopping_cartRecipeSerializer(FavoritesRecipeSerializer):
     image = CustomImageField()
 
     class Meta:
