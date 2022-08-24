@@ -12,6 +12,8 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from users.models import Subscription
 
+from api.paginators import CustomPageNumberPagination
+
 from .permissions import UserPermissions
 from .serializers import (ChangePasswordSerializer,
                           SubscribtionRecipeSerializer,
@@ -32,7 +34,7 @@ class UserViewSet(CreateListRetrieveViewSet):
     queryset = User.objects.all().order_by('id')
     serializer_class = UserSerializer
     permission_classes = (UserPermissions,)
-    pagination_class = LimitOffsetPagination
+    pagination_class = CustomPageNumberPagination
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -56,19 +58,26 @@ class UserViewSet(CreateListRetrieveViewSet):
             return obj
         return super().get_object()
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], pagination_class = CustomPageNumberPagination,
+        permission_classes = (permissions.IsAuthenticated,))
     def subscriptions(self, request):
         recipes_limit = int(request.query_params['recipes_limit'])
-        authors = User.objects.filter(subscription_authors__subscriber=request.user).prefetch_related('recipes')
-        response_data = SubscribtionUserSerializer(authors, many=True).data
-        for author in response_data:
-            author.update({'recipes': SubscribtionRecipeSerializer(
-                authors.filter(id=author['id']).get().recipes.all()[:recipes_limit], many=True).data})
-        return Response(response_data, status=status.HTTP_200_OK)
+        authors = User.objects.filter(
+            subscription_authors__subscriber=request.user).prefetch_related('recipes')
+        queryset = self.filter_queryset(authors.all())
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = SubscribtionUserSerializer(page, many=True)
+            for author in serializer.data:
+                author.update({'recipes': SubscribtionRecipeSerializer(
+                    authors.filter(id=author['id']).get().recipes.all()[:recipes_limit], many=True).data})
+            return self.get_paginated_response(serializer.data)
+        else:
+            raise ValidationError(
+                'В параметрах запроса передайте параметр limit = Колличество обьектов в выдаче')
 
     @action(detail=True, methods=['post', 'delete'])
     def subscribe(self, request, pk=None):
-        recipes_limit = int(request.query_params['recipes_limit'])
         try:
             author = User.objects.prefetch_related('recipes').get(id=pk)
         except ObjectDoesNotExist:
@@ -76,6 +85,13 @@ class UserViewSet(CreateListRetrieveViewSet):
         if author == request.user:
             raise ValidationError(detail={'Подписки': 'Подписка на самого себя запрещена.'})
         if request.method == 'POST':
+            try:
+                recipes_limit = int(request.query_params['recipes_limit'])
+            except Exception:
+                raise ValidationError(
+                    'В параметрах запроса передайте параметр' 
+                    'recipes_limit = Колличество обьектов в выдаче'
+                )
             if Subscription.objects.filter(author=author, subscriber=request.user).exists():
                 raise ValidationError(detail={'Подписки': 'Подписка уже существует.'})
             Subscription.objects.create(subscriber=request.user, author=author)

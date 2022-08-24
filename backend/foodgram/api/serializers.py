@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.core.files.base import ContentFile
 from foodgram.settings import HOST_NAME
-from recipes.models import (Ingredient, Recipe, RecipesIngredients,
+from recipes.models import (Favorites, Ingredient, Recipe, RecipesIngredients,
                             Shopping_cart, Tag)
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
@@ -83,42 +83,6 @@ class SubscribtionRecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time')
 
 
-class SubscribtionUserSerializer(serializers.ModelSerializer):
-    #recipes = SubscribtionRecipeSerializer(many=True)
-    is_subscribed = serializers.BooleanField(default=True)
-    recipes_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = User
-        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'is_subscribed', 'recipes_count')
-
-    def get_recipes_count(self, obj):
-        return obj.recipes.count()
-
-
-'''class SubscribtionRecipeSerializer(serializers.ModelSerializer):
-    image = CustomImageField()
-
-    class Meta:
-        model = Recipe
-        fields = ('id', 'name', 'image', 'cooking_time')
-
-
-class SubscribtionUserSerializer(serializers.ModelSerializer):
-    recipes = SubscribtionRecipeSerializer(many=True)
-    is_subscribed = serializers.BooleanField(default=True)
-    recipes_count = serializers.SerializerMethodField()
-
-    class Meta:
-        model = User
-        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'is_subscribed', 'recipes_count', 'recipes')
-
-    def get_recipes_count(self, obj):
-        return obj.recipes.count()'''
-
-
-'*********************************************************************'
-
 class IngredientSerializer(serializers.ModelSerializer):
     
     class Meta:
@@ -195,15 +159,45 @@ class ResponseRecipeSerializer(serializers.ModelSerializer):
     ingredients = IngredientSerializer(many=True)
     author = UserSerializer(read_only=True)
     image = CustomImageField()
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
-        fields = ('id', 'name', 'image', 'ingredients', 'tags', 'text', 'cooking_time', 'author')
+        fields = (
+            'id', 'name', 'image', 'ingredients', 'tags', 'text', 'cooking_time',
+                'author', 'is_favorited',    'is_in_shopping_cart')
         model = Recipe
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # We pass the "upper serializer" context to the "nested one"
         self.fields['author'].context.update(self.context)
+
+    def get_is_favorited(self, obj):
+        if self.context['request'].user.is_anonymous:
+            return False
+        return Favorites.objects.filter(
+            user=self.context['request'].user, recipe=obj).exists()
+
+    def get_is_in_shopping_cart(self, obj):
+        if self.context['request'].user.is_anonymous:
+            return False
+        return Shopping_cart.objects.filter(
+            owner=self.context['request'].user, recipe=obj).exists()
+
+
+class SubscribtionUserSerializer(serializers.ModelSerializer):
+    recipes = SubscribtionRecipeSerializer(many=True)
+    is_subscribed = serializers.BooleanField(default=True)
+    recipes_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = (
+            'id', 'email', 'username', 'first_name', 'last_name', 'is_subscribed', 'recipes_count', 'recipes')
+
+    def get_recipes_count(self, obj):
+        return obj.recipes.count()
 
 
 class FavoritesRecipeSerializer(serializers.ModelSerializer):
