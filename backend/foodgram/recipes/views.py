@@ -1,28 +1,21 @@
-import imp
 import json
-from email import message
 
 from api.filters import RecipeFilter
 from api.paginators import CustomPageNumberPagination
 from api.permissions import RecipePermissions
 from api.serializers import (FavoritesRecipeSerializer, IngredientSerializer,
                              RecipeSerializer, ResponseRecipeSerializer,
-                             Shopping_cartRecipeSerializer, TagSerializer,
-                             UserSerializer)
-from django import http
+                             Shopping_cartRecipeSerializer, TagSerializer)
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import check_password
 from django.db.models import Q, Sum
 from django.http import HttpResponseNotFound
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import mixins, permissions, status, viewsets
-from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework import filters, status, viewsets
+from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.tokens import AccessToken
 
 from .models import (Favorites, Ingredient, Recipe, RecipesIngredients,
                      Shopping_cart, Tag)
@@ -34,6 +27,8 @@ class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
     pagination_class = None
     permission_classes = (AllowAny,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
 
 class TagViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TagSerializer
@@ -135,9 +130,9 @@ class RecipeViewSet(viewsets.ModelViewSet):
             queryset = self.filter_queryset(self.get_queryset())
 
         page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = ResponseRecipeSerializer(page,
+        serializer = ResponseRecipeSerializer(page,
                 many=True, context=self.get_serializer_context())
+        if page is not None:
             return self.get_paginated_response(serializer.data)
 
         return Response(serializer.data)

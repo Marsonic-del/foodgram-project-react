@@ -1,13 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Count, F, OuterRef, Prefetch, Subquery
-from recipes.models import Recipe
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import get_object_or_404
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from users.models import Subscription
@@ -85,13 +82,7 @@ class UserViewSet(CreateListRetrieveViewSet):
         if author == request.user:
             raise ValidationError(detail={'Подписки': 'Подписка на самого себя запрещена.'})
         if request.method == 'POST':
-            try:
-                recipes_limit = int(request.query_params['recipes_limit'])
-            except Exception:
-                raise ValidationError(
-                    'В параметрах запроса передайте параметр' 
-                    'recipes_limit = Колличество обьектов в выдаче'
-                )
+            recipes_limit = int(request.query_params.get('recipes_limit', 0))
             if Subscription.objects.filter(author=author, subscriber=request.user).exists():
                 raise ValidationError(detail={'Подписки': 'Подписка уже существует.'})
             Subscription.objects.create(subscriber=request.user, author=author)

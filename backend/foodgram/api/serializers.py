@@ -1,9 +1,9 @@
 import base64
-import re
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.core.files.base import ContentFile
+from drf_extra_fields.fields import Base64ImageField
 from foodgram.settings import HOST_NAME
 from recipes.models import (Favorites, Ingredient, Recipe, RecipesIngredients,
                             Shopping_cart, Tag)
@@ -60,7 +60,7 @@ class ChangePasswordSerializer(serializers.ModelSerializer):
         return instance
 
 
-class CustomImageField(serializers.Field):
+'''class CustomImageField(serializers.Field):
     def to_representation(self, value):
         image_url = f'{HOST_NAME}media/{value.name}'
         return image_url
@@ -72,11 +72,11 @@ class CustomImageField(serializers.Field):
            data = ContentFile(base64.b64decode(imgstr), name='image.' + ext)
         except ValueError:
             raise serializers.ValidationError('Некорректные данные картинки')
-        return data
+        return data'''
 
 
 class SubscribtionRecipeSerializer(serializers.ModelSerializer):
-    image = CustomImageField()
+    image =  Base64ImageField()
 
     class Meta:
         model = Recipe
@@ -114,7 +114,7 @@ class IngredientsInRercipeSerializer(serializers.Serializer):
 
 class RecipeSerializer(serializers.ModelSerializer):
     ingredients = IngredientsInRercipeSerializer(many=True)
-    image = CustomImageField()
+    image = Base64ImageField()
     author = UserSerializer(read_only=True)
 
     class Meta:
@@ -158,7 +158,7 @@ class ResponseRecipeSerializer(serializers.ModelSerializer):
     tags = TagSerializer(many=True)
     ingredients = IngredientSerializer(many=True)
     author = UserSerializer(read_only=True)
-    image = CustomImageField()
+    image = Base64ImageField()
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
 
@@ -201,7 +201,7 @@ class SubscribtionUserSerializer(serializers.ModelSerializer):
 
 
 class FavoritesRecipeSerializer(serializers.ModelSerializer):
-    image = CustomImageField()
+    image = Base64ImageField()
 
     class Meta:
         model = Recipe
@@ -209,7 +209,7 @@ class FavoritesRecipeSerializer(serializers.ModelSerializer):
 
 
 class Shopping_cartRecipeSerializer(FavoritesRecipeSerializer):
-    image = CustomImageField()
+    image = Base64ImageField()
 
     class Meta:
         model = Recipe

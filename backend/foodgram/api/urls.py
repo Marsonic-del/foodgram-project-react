@@ -1,5 +1,6 @@
 from django.conf.urls import include
 from django.urls import path
+from foodgram import settings
 from recipes.views import IngredientViewSet, RecipeViewSet, TagViewSet
 from rest_framework.routers import SimpleRouter
 
@@ -18,4 +19,5 @@ urlpatterns = [
     path('auth/token/login/', get_token, name='get_token'),
     path('auth/token/logout/', delete_token, name='delete_token'),
 ]
+
 
