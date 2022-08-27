@@ -41,7 +41,8 @@ class UserViewSet(CreateListRetrieveViewSet):
         # Удаляем из ответа is_subscribed
         serialized_data.pop('is_subscribed', None)
         headers = self.get_success_headers(serializer.data)
-        return Response(serialized_data, status=status.HTTP_201_CREATED, headers=headers)
+        return Response(serialized_data,
+                        status=status.HTTP_201_CREATED, headers=headers)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object(request)
@@ -55,47 +56,75 @@ class UserViewSet(CreateListRetrieveViewSet):
             return obj
         return super().get_object()
 
-    @action(detail=False, methods=['get'], pagination_class = CustomPageNumberPagination,
-        permission_classes = (permissions.IsAuthenticated,))
+    @action(
+            detail=False, methods=['get'],
+            pagination_class=CustomPageNumberPagination,
+            permission_classes=(permissions.IsAuthenticated,)
+        )
     def subscriptions(self, request):
         recipes_limit = int(request.query_params['recipes_limit'])
         authors = User.objects.filter(
-            subscription_authors__subscriber=request.user).prefetch_related('recipes')
+            subscription_authors__subscriber=request.user
+            ).prefetch_related('recipes')
         queryset = self.filter_queryset(authors.all())
         page = self.paginate_queryset(queryset)
+
         if page is not None:
             serializer = SubscribtionUserSerializer(page, many=True)
             for author in serializer.data:
-                author.update({'recipes': SubscribtionRecipeSerializer(
-                    authors.filter(id=author['id']).get().recipes.all()[:recipes_limit], many=True).data})
+                author.update(
+                    {'recipes': SubscribtionRecipeSerializer(
+                                          authors.filter(
+                                            id=author['id']
+                                            ).get(
+                                            ).recipes.all(
+                                            )[:recipes_limit], many=True).data}
+                                        )
             return self.get_paginated_response(serializer.data)
-        else:
-            raise ValidationError(
-                'В параметрах запроса передайте параметр limit = Колличество обьектов в выдаче')
+
+        serializer = SubscribtionUserSerializer(authors.all(), many=True)
+        for author in serializer.data:
+            author.update({'recipes': SubscribtionRecipeSerializer(
+                    authors.filter(
+                        id=author['id']).get(
+                        ).recipes.all(
+                        )[:recipes_limit], many=True).data})
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post', 'delete'])
     def subscribe(self, request, pk=None):
         try:
             author = User.objects.prefetch_related('recipes').get(id=pk)
         except ObjectDoesNotExist:
-            raise NotFound(detail={'Подписки': 'Автор не существует.'}, code=404)
+            raise NotFound(
+                detail={'Подписки': 'Автор не существует.'}, code=404)
         if author == request.user:
-            raise ValidationError(detail={'Подписки': 'Подписка на самого себя запрещена.'})
+            raise ValidationError(
+                detail={'Подписки': 'Подписка на самого себя запрещена.'})
         if request.method == 'POST':
             recipes_limit = int(request.query_params.get('recipes_limit', 0))
-            if Subscription.objects.filter(author=author, subscriber=request.user).exists():
-                raise ValidationError(detail={'Подписки': 'Подписка уже существует.'})
+            if Subscription.objects.filter(
+                                    author=author, subscriber=request.user
+                                    ).exists():
+                raise ValidationError(
+                    detail={'Подписки': 'Подписка уже существует.'})
             Subscription.objects.create(subscriber=request.user, author=author)
             response_data = SubscribtionUserSerializer(author).data
-            response_data['recipes'] = SubscribtionRecipeSerializer(author.recipes.all()[:recipes_limit], many=True).data
+            response_data['recipes'] = SubscribtionRecipeSerializer(
+                                author.recipes.all()[:recipes_limit], many=True
+                                ).data
             return Response(response_data, status=status.HTTP_201_CREATED)
         if request.method == 'DELETE':
             try:
-                Subscription.objects.select_related('author', 'subscriber').get(
-                    author=author, subscriber=request.user).delete()
+                Subscription.objects.select_related(
+                    'author', 'subscriber').get(
+                    author=author, subscriber=request.user
+                    ).delete()
             except ObjectDoesNotExist:
                 raise NotFound(detail={'Подписки': 'Подписка не существует.'})
-            return Response('Подписка удалена.', status=status.HTTP_204_NO_CONTENT)
+            return Response(
+                'Подписка удалена.', status=status.HTTP_204_NO_CONTENT
+                )
 
 
 @api_view(['POST'])
@@ -107,7 +136,9 @@ def get_token(request):
     password = serializer.validated_data.get('password')
     user = get_object_or_404(User.objects.all(), email=email)
     if not check_password(password, user.password):
-        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND
+            )
     token = str(AccessToken().for_user(user))
     return Response({'auth_token': token}, status=status.HTTP_201_CREATED)
 
@@ -121,7 +152,6 @@ def delete_token(request):
 def set_password(request):
     user = get_object_or_404(User.objects.all(), id=request.user.id)
     serializer = ChangePasswordSerializer(user, data=request.data)
-    serializer.is_valid(raise_exception=True) 
+    serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(status=status.HTTP_204_NO_CONTENT)
-
