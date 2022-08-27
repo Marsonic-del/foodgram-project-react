@@ -4,6 +4,7 @@ from django.db import models
 
 User = get_user_model()
 
+
 class Ingredient(models.Model):
     name = models.CharField(
         'Ингредиент',
@@ -65,7 +66,7 @@ class Recipe(models.Model):
     cooking_time = models.IntegerField(
         'Время приготовления',
         help_text='Время приготовления',
-        validators=[MinValueValidator(1),]
+        validators=[MinValueValidator(1), ]
     )
     image = models.ImageField(
         'Картинка',
@@ -76,12 +77,14 @@ class Recipe(models.Model):
         related_name='recipes',
         on_delete=models.CASCADE
         )
-
+    publish_date = models.DateTimeField(
+        'Дата публикации', auto_now_add=True
+    )
 
     class Meta:
         verbose_name = 'Рецепт'
         verbose_name_plural = 'Рецепты'
-        ordering = ('id',)
+        ordering = ('-publish_date',)
 
     def __str__(self):
         return self.name
