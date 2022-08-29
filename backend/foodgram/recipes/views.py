@@ -96,13 +96,13 @@ class RecipeViewSet(ViewsetForRecipes):
             get_object_or_404(Favorites.objects.all(), recipe=recipe).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def get_serializer_context(self):
+    '''def get_serializer_context(self):
         """Переопределяем метод get_serializer_context."""
         context = super(RecipeViewSet, self).get_serializer_context()
         context.update({"request": self.request})
-        return context
+        return context'''
 
-    def update(self, request, *args, **kwargs):
+    '''def update(self, request, *args, **kwargs):
         """Переопределяем метод update."""
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data)
@@ -191,7 +191,7 @@ class RecipeViewSet(ViewsetForRecipes):
 
         Чтобы возвратить instance
         """
-        return serializer.save()
+        return serializer.save()'''
 
 
 def error404(request, exception):

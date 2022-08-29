@@ -1,3 +1,6 @@
+from asyncore import read, write
+from telnetlib import Telnet
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from drf_extra_fields.fields import Base64ImageField
@@ -83,79 +86,117 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class RecipesIngredientsSerializer(serializers.ModelSerializer):
+    id = serializers.PrimaryKeyRelatedField(
+        queryset=Ingredient.objects.all(),
+        source='ingredient.id')
+    name = serializers.StringRelatedField(source='ingredient.name')
+    measurement_unit = serializers.StringRelatedField(source='ingredient.measurement_unit')
 
     class Meta:
-        fields = ('id', 'recipe', 'ingredient', 'amount')
+        fields = ('amount', 'id', 'name', 'measurement_unit')
         model = RecipesIngredients
 
 
-class IngredientsInRercipeSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    amount = serializers.IntegerField()
-
-    class Meta:
-        fields = ('id', 'amount', )
-
-
 class RecipeSerializer(serializers.ModelSerializer):
-    ingredients = IngredientsInRercipeSerializer(many=True)
     image = Base64ImageField()
     author = UserSerializer(read_only=True)
+    ingredients = RecipesIngredientsSerializer(source='recipesingredients_set', many=True, read_only=True)
+    tags = TagSerializer(
+        read_only=True,
+        many=True)
+    is_favorited = serializers.SerializerMethodField()
+    is_in_shopping_cart = serializers.SerializerMethodField()
 
     class Meta:
         fields = ('id', 'name', 'image', 'ingredients',
-                  'tags', 'text', 'cooking_time', 'author')
+                  'tags', 'text', 'cooking_time', 'author',
+                  'is_favorited', 'is_in_shopping_cart')
         model = Recipe
 
-    def update(self, recipe, validated_data):
-        ingredient_amount = {}
-        pop_ingredients = validated_data.pop('ingredients')
-        pop_tags = validated_data.pop('tags')
-        for attr, value in validated_data.items():
-            setattr(recipe, attr, value)
-        recipe.ingredients.clear()
-        recipe.tags.clear()
+    def get_is_favorited(self, obj):
+        if self.context['request'].user.is_anonymous:
+            return False
+        return Favorites.objects.filter(
+            user=self.context['request'].user, recipe=obj).exists()
 
-        for ingredient in pop_ingredients:
-            if ingredient['id'] in ingredient_amount:
-                ingredient_amount[ingredient['id']] += ingredient['amount']
-            else:
-                ingredient_amount[ingredient['id']] = ingredient['amount']
+    def get_is_in_shopping_cart(self, obj):
+        if self.context['request'].user.is_anonymous:
+            return False
+        return Shopping_cart.objects.filter(
+            owner=self.context['request'].user, recipe=obj).exists()
 
-        for ingredient_id, amount in ingredient_amount.items():
-            recipe_ingredient = get_object_or_404(
-                                Ingredient.objects.all(), id=ingredient_id)
-            RecipesIngredients.objects.create(
+    def validate(self, data):
+        ingredients = self.initial_data.get('ingredients')
+        if not ingredients:
+            raise serializers.ValidationError(
+                'Необходимо добавить хотя бы 1 игредиент'
+            )
+        ingredient_list = []
+        for ingredient_item in ingredients:
+            ingredient_id = ingredient_item.get('id')
+            ingredient = get_object_or_404(Ingredient,
+                                           id=ingredient_id)
+            if ingredient in ingredient_list:
+                raise serializers.ValidationError('Ингридиенты должны '
+                                                  'быть уникальными')
+            ingredient_list.append(ingredient)
+            
+            amount = ingredient_item.get('amount')
+            if int(amount) <= 0:
+                raise serializers.ValidationError('Проверьте, что количество'
+                                                  'ингредиента больше нуля')
+
+        tags = self.initial_data.get('tags')
+        if not tags:
+            raise serializers.ValidationError({
+                'tags': 'Нужно выбрать хотя бы один тэг!'
+            })
+        tags_list = []
+        for tag in tags:
+            if tag in tags_list:
+                raise serializers.ValidationError({
+                    'tags': 'Тэги должны быть уникальными!'
+                })
+            tags_list.append(tag)
+
+        cooking_time = data.get('cooking_time')
+        if int(cooking_time) <= 0:
+            raise serializers.ValidationError({
+                'cooking_time': 'Время приготовление должно быть больше нуля!'
+            })
+        data['ingredients'] = ingredients
+        data['tags'] = tags
+        return data
+
+    def create_ingredients_amount(self, recipe, ingredients):
+        RecipesIngredients.objects.bulk_create(
+            [RecipesIngredients(
+                ingredient=get_object_or_404(
+                            Ingredient.objects.all(), id=ingredient['id']),
                 recipe=recipe,
-                ingredient=recipe_ingredient,
-                amount=amount)
-
-        for tag in pop_tags:
-            recipe.tags.add(tag)
-        recipe.save()
-        return recipe
-
+                amount=ingredient['amount']
+            ) for ingredient in ingredients]
+        )
+    
     def create(self, validated_data):
-        ingredient_amount = {}
         pop_ingredients = validated_data.pop('ingredients')
         pop_tags = validated_data.pop('tags')
         recipe = Recipe.objects.create(author=self.context['request'].user,
                                        **validated_data)
-        for ingredient in pop_ingredients:
-            if ingredient['id'] in ingredient_amount:
-                ingredient_amount[ingredient['id']] += ingredient['amount']
-            else:
-                ingredient_amount[ingredient['id']] = ingredient['amount']
+        recipe.tags.set(pop_tags)
+        self.create_ingredients_amount(recipe, pop_ingredients)
+        return recipe
 
-        for ingredient_id, amount in ingredient_amount.items():
-            recipe_ingredient = get_object_or_404(Ingredient.objects.all(),
-                                                  id=ingredient_id)
-            RecipesIngredients.objects.create(
-                recipe=recipe,
-                ingredient=recipe_ingredient,
-                amount=amount)
-        for tag in pop_tags:
-            recipe.tags.add(tag)
+
+    def update(self, recipe, validated_data):
+        pop_ingredients = validated_data.pop('ingredients')
+        pop_tags = validated_data.pop('tags')
+        super().update(recipe, validated_data)
+        recipe.ingredients.clear()
+        recipe.tags.clear()
+        self.create_ingredients_amount(recipe, pop_ingredients)
+        recipe.tags.set(pop_tags)
+        recipe.save()
         return recipe
 
 
