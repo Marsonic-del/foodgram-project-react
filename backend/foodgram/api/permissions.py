@@ -4,10 +4,22 @@ from rest_framework import permissions
 class UserPermissions(permissions.BasePermission):
 
     def has_permission(self, request, view):
-        if 'pk' in request.parser_context['kwargs']:
-            return request.user.is_authenticated
-        else:
+        if 'id' in request.parser_context['kwargs']:
+            return (request.user.is_authenticated and
+                    request.method == 'GET')
+        elif request.method in ['GET', 'POST']:
             return True
+        else:
+            return False
+
+
+class DeleteForbidden(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return False
+
+    def has_object_permission(self, request, view, obj):
+        return False
+
 
 
 class RecipePermissions(permissions.BasePermission):
@@ -19,6 +31,4 @@ class RecipePermissions(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
             return True
-
-        # Instance must have an attribute named `owner`.
         return obj.author == request.user

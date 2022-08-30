@@ -1,8 +1,6 @@
-from asyncore import read, write
-from telnetlib import Telnet
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
+from djoser.serializers import UserCreateSerializer
 from drf_extra_fields.fields import Base64ImageField
 from recipes.models import (Favorites, Ingredient, Recipe, RecipesIngredients,
                             Shopping_cart, Tag)
@@ -29,9 +27,13 @@ class UserSerializer(serializers.ModelSerializer):
         return Subscription.objects.filter(
             author=obj, subscriber=self.context['request'].user).exists()
 
-    def create(self, validated_data):
-        user = User.objects.create_user(**validated_data)
-        return user
+
+class CustomCreateUserSerializer(UserCreateSerializer):
+
+    class Meta:
+        model = User
+        fields = ('email', 'username', 'first_name',
+                  'last_name', 'id', 'password')
 
 
 class TokenSerializer(serializers.Serializer):
@@ -123,13 +125,13 @@ class RecipeSerializer(serializers.ModelSerializer):
         if self.context['request'].user.is_anonymous:
             return False
         return Shopping_cart.objects.filter(
-            owner=self.context['request'].user, recipe=obj).exists()
+            user=self.context['request'].user, recipe=obj).exists()
 
     def validate(self, data):
         ingredients = self.initial_data.get('ingredients')
         if not ingredients:
             raise serializers.ValidationError(
-                'Необходимо добавить хотя бы 1 игредиент'
+                'Список ингредиентов не может быть пустым'
             )
         ingredient_list = []
         for ingredient_item in ingredients:
@@ -137,7 +139,7 @@ class RecipeSerializer(serializers.ModelSerializer):
             ingredient = get_object_or_404(Ingredient,
                                            id=ingredient_id)
             if ingredient in ingredient_list:
-                raise serializers.ValidationError('Ингридиенты должны '
+                raise serializers.ValidationError('Ингредиенты должны '
                                                   'быть уникальными')
             ingredient_list.append(ingredient)
             
@@ -198,38 +200,6 @@ class RecipeSerializer(serializers.ModelSerializer):
         recipe.tags.set(pop_tags)
         recipe.save()
         return recipe
-
-
-class ResponseRecipeSerializer(serializers.ModelSerializer):
-    tags = TagSerializer(many=True)
-    ingredients = IngredientSerializer(many=True)
-    author = UserSerializer(read_only=True)
-    image = Base64ImageField()
-    is_favorited = serializers.SerializerMethodField()
-    is_in_shopping_cart = serializers.SerializerMethodField()
-
-    class Meta:
-        fields = ('id', 'name', 'image', 'ingredients',
-                  'tags', 'text', 'cooking_time',
-                  'author', 'is_favorited',    'is_in_shopping_cart')
-        model = Recipe
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # We pass the "upper serializer" context to the "nested one"
-        self.fields['author'].context.update(self.context)
-
-    def get_is_favorited(self, obj):
-        if self.context['request'].user.is_anonymous:
-            return False
-        return Favorites.objects.filter(
-            user=self.context['request'].user, recipe=obj).exists()
-
-    def get_is_in_shopping_cart(self, obj):
-        if self.context['request'].user.is_anonymous:
-            return False
-        return Shopping_cart.objects.filter(
-            owner=self.context['request'].user, recipe=obj).exists()
 
 
 class SubscribtionUserSerializer(serializers.ModelSerializer):

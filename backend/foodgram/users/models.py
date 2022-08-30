@@ -17,6 +17,7 @@ class User(AbstractUser):
                                  max_length=150,
                                  blank=False,
                                  null=False)
+    REQUIRED_FIELDS = ["email", "password", "first_name", "last_name"]
 
     class Meta(AbstractUser.Meta):
         swappable = "AUTH_USER_MODEL"

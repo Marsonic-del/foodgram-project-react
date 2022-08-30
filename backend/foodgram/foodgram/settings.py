@@ -34,6 +34,8 @@ INSTALLED_APPS = [
     'django.db.models.fields.related_descriptors',
     'rest_framework',
     'django_filters',
+    'rest_framework.authtoken',
+    'djoser',
     'rest_framework_simplejwt',
     'api',
     'users',
@@ -88,7 +90,7 @@ DATABASES = {
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated', 
@@ -149,3 +151,23 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+DJOSER = {
+    'PASSWORD_RESET_CONFIRM_URL': '#/password/reset/confirm/{uid}/{token}',
+    'USERNAME_RESET_CONFIRM_URL': '#/username/reset/confirm/{uid}/{token}',
+    'ACTIVATION_URL': '#/activate/{uid}/{token}',
+    'SEND_ACTIVATION_EMAIL': False,
+    'LOGIN_FIELD': 'email',
+    'HIDE_USERS' : False,
+    'SERIALIZERS': {
+        'user_create': 'api.serializers.CustomCreateUserSerializer',
+        'user': 'api.serializers.UserSerializer',
+        'current_user': 'api.serializers.UserSerializer',
+    },
+    'PERMISSIONS': {
+        'user': ['api.permissions.UserPermissions'],
+        'user_list': ['rest_framework.permissions.AllowAny'],
+        'user_delete': ['api.permissions.DeleteForbidden'],
+    }
+}

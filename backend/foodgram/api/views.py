@@ -1,39 +1,46 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ObjectDoesNotExist
-from rest_framework import mixins, permissions, status, viewsets
+from django.http import FileResponse
+from django_filters.rest_framework import DjangoFilterBackend
+from djoser.permissions import CurrentUserOrAdmin
+from djoser.views import UserViewSet
+from recipes.models import Favorites, Ingredient, Recipe, Shopping_cart, Tag
+from rest_framework import filters, mixins, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from users.models import Subscription
 
-from api.paginators import CustomPageNumberPagination
-
-from .permissions import UserPermissions
-from .serializers import (ChangePasswordSerializer,
-                          SubscribtionRecipeSerializer,
-                          SubscribtionUserSerializer, TokenSerializer,
-                          UserSerializer)
+from .filters import RecipeFilter
+#from .mixins import CreateListRetrieveViewSet
+from .paginators import CustomPageNumberPagination
+from .permissions import RecipePermissions, UserPermissions
+from .serializers import (ChangePasswordSerializer, IngredientSerializer,
+                          RecipeSerializer, SubscribtionRecipeSerializer,
+                          SubscribtionUserSerializer, TagSerializer,
+                          TokenSerializer, UserSerializer)
+from .services import ViewsetForRecipes, get_pdf_file
 
 User = get_user_model()
 
 
-class CreateListRetrieveViewSet(mixins.CreateModelMixin,
-                                mixins.ListModelMixin,
-                                mixins.RetrieveModelMixin,
-                                viewsets.GenericViewSet):
-    pass
 
-
-class UserViewSet(CreateListRetrieveViewSet):
+class CustomUserViewSet(UserViewSet):
     queryset = User.objects.all().order_by('id')
     serializer_class = UserSerializer
-    permission_classes = (UserPermissions,)
+    #permission_classes = (UserPermissions,)
     pagination_class = CustomPageNumberPagination
 
-    def create(self, request, *args, **kwargs):
+    @action(["get", ], permission_classes=(CurrentUserOrAdmin,), detail=False)
+    def me(self, request, *args, **kwargs):
+        self.get_object = self.get_instance
+        return self.retrieve(request, *args, **kwargs)
+
+    '''def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -42,19 +49,19 @@ class UserViewSet(CreateListRetrieveViewSet):
         serialized_data.pop('is_subscribed', None)
         headers = self.get_success_headers(serializer.data)
         return Response(serialized_data,
-                        status=status.HTTP_201_CREATED, headers=headers)
+                        status=status.HTTP_201_CREATED, headers=headers)'''
 
-    def retrieve(self, request, *args, **kwargs):
+    '''def retrieve(self, request, *args, **kwargs):
         instance = self.get_object(request)
         serializer = self.get_serializer(instance)
-        return Response(serializer.data)
+        return Response(serializer.data)'''
 
-    def get_object(self, request):
+    '''def get_object(self, request):
         if request.parser_context['kwargs']['pk'] == 'me':
             user_id = request.user.id
             obj = get_object_or_404(User, id=user_id)
             return obj
-        return super().get_object()
+        return super().get_object()'''
 
     @action(
             detail=False, methods=['get'],
@@ -155,3 +162,74 @@ def set_password(request):
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+    # ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+
+class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = IngredientSerializer
+    queryset = Ingredient.objects.all()
+    pagination_class = None
+    permission_classes = (AllowAny,)
+    filter_backends = (filters.SearchFilter,)
+    search_fields = ('name',)
+
+
+class TagViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = TagSerializer
+    queryset = Tag.objects.all()
+    pagination_class = None
+    permission_classes = (AllowAny,)
+
+
+class RecipeViewSet(ViewsetForRecipes):
+    serializer_class = RecipeSerializer
+    queryset = Recipe.objects.all()
+    permission_classes = (RecipePermissions,)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = RecipeFilter
+    pagination_class = CustomPageNumberPagination
+
+    @action(
+        detail=False,
+        methods=['get', ],
+        permission_classes=[IsAuthenticated]
+        )
+    def download_shopping_cart(self, request, pk=None):
+        """
+        Формирует и отправляет PDF файл.
+
+        С ингридиентами и их количеством в рецептах добавленных список покупок.
+        """
+        file_content = self.get_shopping_cart_content(request)
+        return FileResponse(
+            get_pdf_file(file_content),
+            as_attachment=True,
+            filename='shopping_cart.pdf')
+
+    @action(
+        detail=True,
+        methods=['post', 'delete']
+        )
+    def shopping_cart(self, request, pk=None):
+        """Добавляет и удаляет запись в модели Shopping_cart."""
+        recipe = get_object_or_404(Recipe, id=pk)
+        if request.method == 'POST':
+            return self.add_recipe_to_user_shopping_cart(
+                request, recipe=recipe
+                )
+        if request.method == 'DELETE':
+            return self.remove_recipe_to_shopping_or_favorite(
+                Shopping_cart, request, recipe=recipe)
+
+    @action(detail=True, methods=['post', 'delete'])
+    def favorite(self, request, pk=None):
+        """Добавляет и удаляет запись в модели Favorites."""
+        recipe = get_object_or_404(Recipe, id=pk)
+        if request.method == 'POST':
+            return self.add_recipe_to_user_favorites(
+                request, recipe=recipe
+                )
+        if request.method == 'DELETE':
+            return self.remove_recipe_to_shopping_or_favorite(
+                Favorites, request, recipe=recipe)

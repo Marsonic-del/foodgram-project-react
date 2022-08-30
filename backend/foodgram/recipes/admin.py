@@ -58,9 +58,9 @@ class FavoritesAdmin(admin.ModelAdmin):
 
 
 class Shopping_cartAdmin(admin.ModelAdmin):
-    list_display = ('id', 'owner', 'recipe')
-    search_fields = ('owner',)
-    list_filter = ('owner', )
+    list_display = ('id', 'user', 'recipe')
+    search_fields = ('user',)
+    list_filter = ('user', )
     empty_value_display = '-пусто-'
 
 
