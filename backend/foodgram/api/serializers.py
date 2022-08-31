@@ -1,11 +1,9 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import check_password
 from djoser.serializers import UserCreateSerializer
 from drf_extra_fields.fields import Base64ImageField
 from recipes.models import (Favorites, Ingredient, Recipe, RecipesIngredients,
                             Shopping_cart, Tag)
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
 from users.models import Subscription
 
@@ -36,35 +34,6 @@ class CustomCreateUserSerializer(UserCreateSerializer):
                   'last_name', 'id', 'password')
 
 
-class TokenSerializer(serializers.Serializer):
-    email = serializers.EmailField(allow_blank=False, label='Email address',
-                                   max_length=254, required=True)
-    password = serializers.CharField(allow_blank=False, label='password',
-                                     max_length=150, required=True)
-
-
-class ChangePasswordSerializer(serializers.ModelSerializer):
-    """
-    Serializer for password change endpoint.
-    """
-    current_password = serializers.CharField(max_length=150, required=True)
-    new_password = serializers.CharField(max_length=150, required=True)
-
-    class Meta:
-        fields = ('current_password', 'new_password')
-        model = User
-        extra_kwargs = {'current_password': {'write_only': True},
-                        'new_password': {'write_only': True}}
-
-    def update(self, instance, validated_data):
-        if not check_password(validated_data['current_password'],
-                              instance.password):
-            raise ValidationError({'detail': 'current_password is incorrect'})
-        instance.set_password(validated_data.get('new_password'))
-        instance.save()
-        return instance
-
-
 class SubscribtionRecipeSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
 
@@ -92,7 +61,9 @@ class RecipesIngredientsSerializer(serializers.ModelSerializer):
         queryset=Ingredient.objects.all(),
         source='ingredient.id')
     name = serializers.StringRelatedField(source='ingredient.name')
-    measurement_unit = serializers.StringRelatedField(source='ingredient.measurement_unit')
+    measurement_unit = serializers.StringRelatedField(
+        source='ingredient.measurement_unit'
+        )
 
     class Meta:
         fields = ('amount', 'id', 'name', 'measurement_unit')
@@ -102,7 +73,9 @@ class RecipesIngredientsSerializer(serializers.ModelSerializer):
 class RecipeSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
     author = UserSerializer(read_only=True)
-    ingredients = RecipesIngredientsSerializer(source='recipesingredients_set', many=True, read_only=True)
+    ingredients = RecipesIngredientsSerializer(
+        source='recipesingredients_set', many=True, read_only=True
+        )
     tags = TagSerializer(
         read_only=True,
         many=True)
@@ -142,7 +115,6 @@ class RecipeSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError('Ингредиенты должны '
                                                   'быть уникальными')
             ingredient_list.append(ingredient)
-            
             amount = ingredient_item.get('amount')
             if int(amount) <= 0:
                 raise serializers.ValidationError('Проверьте, что количество'
@@ -179,7 +151,7 @@ class RecipeSerializer(serializers.ModelSerializer):
                 amount=ingredient['amount']
             ) for ingredient in ingredients]
         )
-    
+
     def create(self, validated_data):
         pop_ingredients = validated_data.pop('ingredients')
         pop_tags = validated_data.pop('tags')
@@ -188,7 +160,6 @@ class RecipeSerializer(serializers.ModelSerializer):
         recipe.tags.set(pop_tags)
         self.create_ingredients_amount(recipe, pop_ingredients)
         return recipe
-
 
     def update(self, recipe, validated_data):
         pop_ingredients = validated_data.pop('ingredients')

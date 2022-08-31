@@ -86,6 +86,9 @@ class ViewsetForRecipes(viewsets.ModelViewSet):
             request,
             recipe=recipe)
 
-    def remove_recipe_to_shopping_or_favorite(self, model, request, recipe=None):
+    def remove_recipe_to_shopping_or_favorite(
+            self, model,
+            request,
+            recipe=None):
         get_object_or_404(model, recipe=recipe, user=request.user).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
