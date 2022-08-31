@@ -2,8 +2,8 @@ import io
 
 import reportlab.rl_config
 from django.db.models import Q, Sum
-from recipes.models import (Favorites, Ingredient, Recipe, RecipesIngredients,
-                            Shopping_cart)
+from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
+                            ShoppingCart)
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
@@ -11,8 +11,9 @@ from rest_framework import status, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
-from .serializers import (FavoritesRecipeSerializer,
-                          Shopping_cartRecipeSerializer)
+from .serializers import (FavoriteRecipeSerializer,
+                          ShoppingCartRecipeSerializer,
+                          SubscribtionRecipeSerializer)
 
 
 def get_pdf_file(content: list):
@@ -33,22 +34,33 @@ def get_pdf_file(content: list):
     return buffer
 
 
+def update_author_in_subscription(serializer, authors, recipes_limit):
+    [author.update(
+        {'recipes': SubscribtionRecipeSerializer(
+            authors.filter(
+                id=author['id']
+                ).get(
+                ).recipes.all(
+                )[:recipes_limit], many=True).data}
+                ) for author in serializer.data]
+
+
 class ViewsetForRecipes(viewsets.ModelViewSet):
     """Вюсет для модели Recipe."""
 
     def get_shopping_cart_content(self, request, pk=None):
         """Формирует контент с ингредиентами для списка покупок."""
         file_content = ['Не забыть купить:']
-        recipes = Recipe.objects.filter(shopping_cart__user=request.user)
-        recipes_with_ingredients = RecipesIngredients.objects.filter(
+        recipes = Recipe.objects.filter(shoppingcart__user=request.user)
+        recipes_with_ingredients = RecipeIngredient.objects.filter(
             recipe__in=recipes)
         ingredients = Ingredient.objects.filter(
-            recipesingredients__in=recipes_with_ingredients
+            recipeingredient__in=recipes_with_ingredients
             ).distinct()
         summed_amount_ingredients = ingredients.annotate(
             amount_sum=Sum(
-                'recipesingredients__amount', filter=Q(
-                    recipesingredients__in=recipes_with_ingredients
+                'recipeingredient__amount', filter=Q(
+                    recipeingredient__in=recipes_with_ingredients
                 )))
         for ingredient in summed_amount_ingredients.all():
             file_content.append(
@@ -73,16 +85,16 @@ class ViewsetForRecipes(viewsets.ModelViewSet):
     def add_recipe_to_user_shopping_cart(self, request, recipe=None, pk=None):
         """Добавляет рецепт в список покупок."""
         return self.add_recipe_to_shopping_or_favorite(
-            Shopping_cart,
-            Shopping_cartRecipeSerializer,
+            ShoppingCart,
+            ShoppingCartRecipeSerializer,
             request,
             recipe=recipe)
 
-    def add_recipe_to_user_favorites(self, request, recipe=None, pk=None):
+    def add_recipe_to_user_favorite(self, request, recipe=None, pk=None):
         """Добавляет рецепт в избранное."""
         return self.add_recipe_to_shopping_or_favorite(
-            Favorites,
-            FavoritesRecipeSerializer,
+            Favorite,
+            FavoriteRecipeSerializer,
             request,
             recipe=recipe)
 

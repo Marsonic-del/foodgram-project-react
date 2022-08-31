@@ -1,10 +1,11 @@
 from django.contrib.auth import get_user_model
 from djoser.serializers import UserCreateSerializer
 from drf_extra_fields.fields import Base64ImageField
-from recipes.models import (Favorites, Ingredient, Recipe, RecipesIngredients,
-                            Shopping_cart, Tag)
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
+
+from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
+                            ShoppingCart, Tag)
 from users.models import Subscription
 
 User = get_user_model()
@@ -56,7 +57,7 @@ class TagSerializer(serializers.ModelSerializer):
         model = Tag
 
 
-class RecipesIngredientsSerializer(serializers.ModelSerializer):
+class RecipeIngredientSerializer(serializers.ModelSerializer):
     id = serializers.PrimaryKeyRelatedField(
         queryset=Ingredient.objects.all(),
         source='ingredient.id')
@@ -67,14 +68,14 @@ class RecipesIngredientsSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = ('amount', 'id', 'name', 'measurement_unit')
-        model = RecipesIngredients
+        model = RecipeIngredient
 
 
 class RecipeSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
     author = UserSerializer(read_only=True)
-    ingredients = RecipesIngredientsSerializer(
-        source='recipesingredients_set', many=True, read_only=True
+    ingredients = RecipeIngredientSerializer(
+        source='recipeingredient_set', many=True, read_only=True
         )
     tags = TagSerializer(
         read_only=True,
@@ -91,13 +92,13 @@ class RecipeSerializer(serializers.ModelSerializer):
     def get_is_favorited(self, obj):
         if self.context['request'].user.is_anonymous:
             return False
-        return Favorites.objects.filter(
+        return Favorite.objects.filter(
             user=self.context['request'].user, recipe=obj).exists()
 
     def get_is_in_shopping_cart(self, obj):
         if self.context['request'].user.is_anonymous:
             return False
-        return Shopping_cart.objects.filter(
+        return ShoppingCart.objects.filter(
             user=self.context['request'].user, recipe=obj).exists()
 
     def validate(self, data):
@@ -143,8 +144,8 @@ class RecipeSerializer(serializers.ModelSerializer):
         return data
 
     def create_ingredients_amount(self, recipe, ingredients):
-        RecipesIngredients.objects.bulk_create(
-            [RecipesIngredients(
+        RecipeIngredient.objects.bulk_create(
+            [RecipeIngredient(
                 ingredient=get_object_or_404(
                             Ingredient.objects.all(), id=ingredient['id']),
                 recipe=recipe,
@@ -187,7 +188,7 @@ class SubscribtionUserSerializer(serializers.ModelSerializer):
         return obj.recipes.count()
 
 
-class FavoritesRecipeSerializer(serializers.ModelSerializer):
+class FavoriteRecipeSerializer(serializers.ModelSerializer):
     image = Base64ImageField()
 
     class Meta:
@@ -195,7 +196,7 @@ class FavoritesRecipeSerializer(serializers.ModelSerializer):
         fields = ('id', 'name', 'image', 'cooking_time')
 
 
-class Shopping_cartRecipeSerializer(FavoritesRecipeSerializer):
+class ShoppingCartRecipeSerializer(FavoriteRecipeSerializer):
     image = Base64ImageField()
 
     class Meta:

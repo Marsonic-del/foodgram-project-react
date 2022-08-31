@@ -3,13 +3,14 @@ from django.http import FileResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.permissions import CurrentUserOrAdmin
 from djoser.views import UserViewSet
-from recipes.models import Favorites, Ingredient, Recipe, Shopping_cart, Tag
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
+
+from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 from users.models import Subscription
 
 from .filters import RecipeFilter
@@ -19,7 +20,8 @@ from .serializers import (IngredientSerializer, RecipeSerializer,
                           SubscribtionRecipeSerializer,
                           SubscribtionUserSerializer, TagSerializer,
                           UserSerializer)
-from .services import ViewsetForRecipes, get_pdf_file
+from .services import (ViewsetForRecipes, get_pdf_file,
+                       update_author_in_subscription)
 
 User = get_user_model()
 
@@ -50,23 +52,11 @@ class CustomUserViewSet(UserViewSet):
 
         if page is not None:
             serializer = SubscribtionUserSerializer(page, many=True)
-            [author.update(
-                    {'recipes': SubscribtionRecipeSerializer(
-                                          authors.filter(
-                                            id=author['id']
-                                            ).get(
-                                            ).recipes.all(
-                                            )[:recipes_limit], many=True).data}
-                                        ) for author in serializer.data]
+            update_author_in_subscription(serializer, authors, recipes_limit)
             return self.get_paginated_response(serializer.data)
 
         serializer = SubscribtionUserSerializer(authors.all(), many=True)
-        [author.update({'recipes': SubscribtionRecipeSerializer(
-                    authors.filter(
-                        id=author['id']).get(
-                        ).recipes.all(
-                        )[:recipes_limit], many=True
-                        ).data}) for author in serializer.data]
+        update_author_in_subscription(serializer, authors, recipes_limit)
         return Response(serializer.data)
 
     @action(
@@ -152,14 +142,14 @@ class RecipeViewSet(ViewsetForRecipes):
         return FileResponse(
             get_pdf_file(file_content),
             as_attachment=True,
-            filename='shopping_cart.pdf')
+            filename='ShoppingCart.pdf')
 
     @action(
         detail=True,
         methods=['post', 'delete']
         )
     def shopping_cart(self, request, pk=None):
-        """Добавляет и удаляет запись в модели Shopping_cart."""
+        """Добавляет и удаляет запись в модели ShoppingCart."""
         recipe = get_object_or_404(Recipe, id=pk)
         if request.method == 'POST':
             return self.add_recipe_to_user_shopping_cart(
@@ -167,16 +157,16 @@ class RecipeViewSet(ViewsetForRecipes):
                 )
         if request.method == 'DELETE':
             return self.remove_recipe_to_shopping_or_favorite(
-                Shopping_cart, request, recipe=recipe)
+                ShoppingCart, request, recipe=recipe)
 
     @action(detail=True, methods=['post', 'delete'])
     def favorite(self, request, pk=None):
-        """Добавляет и удаляет запись в модели Favorites."""
+        """Добавляет и удаляет запись в модели Favorite."""
         recipe = get_object_or_404(Recipe, id=pk)
         if request.method == 'POST':
-            return self.add_recipe_to_user_favorites(
+            return self.add_recipe_to_user_favorite(
                 request, recipe=recipe
                 )
         if request.method == 'DELETE':
             return self.remove_recipe_to_shopping_or_favorite(
-                Favorites, request, recipe=recipe)
+                Favorite, request, recipe=recipe)

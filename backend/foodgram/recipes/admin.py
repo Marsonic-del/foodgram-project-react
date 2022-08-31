@@ -2,8 +2,8 @@ from django.contrib import admin
 
 from users.models import Subscription
 
-from .models import (Favorites, Ingredient, Recipe, RecipesIngredients,
-                     Shopping_cart, Tag)
+from .models import (Favorite, Ingredient, Recipe, RecipeIngredient,
+                     ShoppingCart, Tag)
 
 
 class IngredientAdmin(admin.ModelAdmin):
@@ -13,7 +13,7 @@ class IngredientAdmin(admin.ModelAdmin):
     empty_value_display = '-пусто-'
 
 
-class RecipesIngredientsAdmin(admin.ModelAdmin):
+class RecipeIngredientAdmin(admin.ModelAdmin):
     list_display = ('id', 'recipe', 'ingredient', 'amount',
                     'measurement_unit_field')
     search_fields = ('recipe',)
@@ -33,32 +33,32 @@ class TagAdmin(admin.ModelAdmin):
     empty_value_display = '-пусто-'
 
 
-class RecipesIngredientsInline(admin.StackedInline):
-    model = RecipesIngredients
+class RecipeIngredientInline(admin.StackedInline):
+    model = RecipeIngredient
     fk_name = 'recipe'
 
 
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'author', 'get_favorites')
+    list_display = ('name', 'author', 'get_Favorite')
     search_fields = ('name', 'author', 'tags')
     list_filter = ('author', 'tags', 'name')
-    inlines = [RecipesIngredientsInline]
+    inlines = [RecipeIngredientInline]
     empty_value_display = '-пусто-'
 
-    def get_favorites(self, obj):
-        return Favorites.objects.filter(recipe=obj).count()
+    def get_Favorite(self, obj):
+        return Favorite.objects.filter(recipe=obj).count()
 
-    get_favorites.short_description = 'Количество добавлений в избранное'
+    get_Favorite.short_description = 'Количество добавлений в избранное'
 
 
-class FavoritesAdmin(admin.ModelAdmin):
+class FavoriteAdmin(admin.ModelAdmin):
     list_display = ('user', 'recipe')
     search_fields = ('user',)
     list_filter = ('user', )
     empty_value_display = '-пусто-'
 
 
-class Shopping_cartAdmin(admin.ModelAdmin):
+class ShoppingCartAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'recipe')
     search_fields = ('user',)
     list_filter = ('user', )
@@ -75,7 +75,7 @@ class SubscriptionAdmin(admin.ModelAdmin):
 admin.site.register(Tag, TagAdmin)
 admin.site.register(Ingredient, IngredientAdmin)
 admin.site.register(Recipe, RecipeAdmin)
-admin.site.register(Favorites, FavoritesAdmin)
-admin.site.register(Shopping_cart, Shopping_cartAdmin)
+admin.site.register(Favorite, FavoriteAdmin)
+admin.site.register(ShoppingCart, ShoppingCartAdmin)
 admin.site.register(Subscription, SubscriptionAdmin)
-admin.site.register(RecipesIngredients, RecipesIngredientsAdmin)
+admin.site.register(RecipeIngredient, RecipeIngredientAdmin)

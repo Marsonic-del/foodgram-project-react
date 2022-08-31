@@ -10,7 +10,6 @@ class UserAdmin(UserAdmin):
         'username', 'email', 'first_name',
         'last_name', 'date_joined',
         'is_staff', 'password')
-    fieldsets = ()
     search_fields = ('username', 'first_name', 'last_name',)
     list_filter = ('username', 'email',)
     empty_value_display = '-пусто-'
