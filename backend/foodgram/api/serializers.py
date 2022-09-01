@@ -1,11 +1,10 @@
 from django.contrib.auth import get_user_model
 from djoser.serializers import UserCreateSerializer
 from drf_extra_fields.fields import Base64ImageField
-from rest_framework import serializers
-from rest_framework.generics import get_object_or_404
-
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                             ShoppingCart, Tag)
+from rest_framework import serializers
+from rest_framework.generics import get_object_or_404
 from users.models import Subscription
 
 User = get_user_model()
@@ -101,17 +100,35 @@ class RecipeSerializer(serializers.ModelSerializer):
         return ShoppingCart.objects.filter(
             user=self.context['request'].user, recipe=obj).exists()
 
+
+class CreateRecipeIngredientSerializer(serializers.Serializer):
+    amount = serializers.IntegerField()
+    id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
+
+    class Meta:
+        fields = ('id', 'amount')
+        model = Ingredient
+
+
+class WriteRecipeSerializer(serializers.ModelSerializer):
+    image = Base64ImageField()
+    ingredients = CreateRecipeIngredientSerializer(many=True)
+
+    class Meta:
+        fields = ('id', 'name', 'image', 'ingredients',
+                  'tags', 'text', 'cooking_time'
+                )
+        model = Recipe
+
     def validate(self, data):
-        ingredients = self.initial_data.get('ingredients')
+        ingredients = data.get('ingredients')
         if not ingredients:
             raise serializers.ValidationError(
                 'Список ингредиентов не может быть пустым'
             )
         ingredient_list = []
         for ingredient_item in ingredients:
-            ingredient_id = ingredient_item.get('id')
-            ingredient = get_object_or_404(Ingredient,
-                                           id=ingredient_id)
+            ingredient = ingredient_item.get('id')
             if ingredient in ingredient_list:
                 raise serializers.ValidationError('Ингредиенты должны '
                                                   'быть уникальными')
@@ -121,7 +138,7 @@ class RecipeSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError('Проверьте, что количество'
                                                   'ингредиента больше нуля')
 
-        tags = self.initial_data.get('tags')
+        tags = data.get('tags')
         if not tags:
             raise serializers.ValidationError({
                 'tags': 'Нужно выбрать хотя бы один тэг!'
@@ -139,19 +156,15 @@ class RecipeSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 'cooking_time': 'Время приготовление должно быть больше нуля!'
             })
-        data['ingredients'] = ingredients
-        data['tags'] = tags
         return data
 
     def create_ingredients_amount(self, recipe, ingredients):
         RecipeIngredient.objects.bulk_create(
             [RecipeIngredient(
-                ingredient=get_object_or_404(
-                            Ingredient.objects.all(), id=ingredient['id']),
+                ingredient=ingredient['id'],
                 recipe=recipe,
                 amount=ingredient['amount']
-            ) for ingredient in ingredients]
-        )
+            )for ingredient in ingredients])
 
     def create(self, validated_data):
         pop_ingredients = validated_data.pop('ingredients')
@@ -170,8 +183,10 @@ class RecipeSerializer(serializers.ModelSerializer):
         recipe.tags.clear()
         self.create_ingredients_amount(recipe, pop_ingredients)
         recipe.tags.set(pop_tags)
-        recipe.save()
         return recipe
+
+    def to_representation(self, instance):
+        return RecipeSerializer(instance, context=self.context).data
 
 
 class SubscribtionUserSerializer(serializers.ModelSerializer):

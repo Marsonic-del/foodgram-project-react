@@ -3,14 +3,13 @@ from django.http import FileResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.permissions import CurrentUserOrAdmin
 from djoser.views import UserViewSet
+from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-
-from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 from users.models import Subscription
 
 from .filters import RecipeFilter
@@ -19,7 +18,7 @@ from .permissions import RecipePermissions, UserPermissions
 from .serializers import (IngredientSerializer, RecipeSerializer,
                           SubscribtionRecipeSerializer,
                           SubscribtionUserSerializer, TagSerializer,
-                          UserSerializer)
+                          UserSerializer, WriteRecipeSerializer)
 from .services import (ViewsetForRecipes, get_pdf_file,
                        update_author_in_subscription)
 
@@ -120,7 +119,7 @@ class TagViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class RecipeViewSet(ViewsetForRecipes):
-    serializer_class = RecipeSerializer
+    serializer_class = WriteRecipeSerializer
     queryset = Recipe.objects.all()
     permission_classes = (RecipePermissions,)
     filter_backends = (DjangoFilterBackend,)
