@@ -3,24 +3,23 @@ from django.http import FileResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from djoser.permissions import CurrentUserOrAdmin
 from djoser.views import UserViewSet
-from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
-from users.models import Subscription
 
+from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
+from users.models import Subscription
+# это isort так делает
 from .filters import RecipeFilter
 from .paginators import CustomPageNumberPagination
 from .permissions import RecipePermissions, UserPermissions
-from .serializers import (IngredientSerializer, RecipeSerializer,
-                          SubscribtionRecipeSerializer,
+from .serializers import (IngredientSerializer, SubscribtionRecipeSerializer,
                           SubscribtionUserSerializer, TagSerializer,
                           UserSerializer, WriteRecipeSerializer)
-from .services import (ViewsetForRecipes, get_pdf_file,
-                       update_author_in_subscription)
+from .services import ViewsetForRecipes, get_pdf_file
 
 User = get_user_model()
 
@@ -42,20 +41,22 @@ class CustomUserViewSet(UserViewSet):
             permission_classes=(IsAuthenticated,)
         )
     def subscriptions(self, request):
-        recipes_limit = int(request.query_params.get('recipes_limit', 0))
         authors = User.objects.filter(
             subscription_authors__subscriber=request.user
-            ).prefetch_related('recipes')
-        queryset = self.filter_queryset(authors.all())
+            ).prefetch_related('subscribers'
+                               ).prefetch_related('recipes').all()
+        queryset = self.filter_queryset(authors)
         page = self.paginate_queryset(queryset)
 
         if page is not None:
-            serializer = SubscribtionUserSerializer(page, many=True)
-            update_author_in_subscription(serializer, authors, recipes_limit)
+            serializer = SubscribtionUserSerializer(
+                page, many=True,
+                context={'request': request})
             return self.get_paginated_response(serializer.data)
 
-        serializer = SubscribtionUserSerializer(authors.all(), many=True)
-        update_author_in_subscription(serializer, authors, recipes_limit)
+        serializer = SubscribtionUserSerializer(
+            authors.all(), many=True,
+            context={'request': request})
         return Response(serializer.data)
 
     @action(

@@ -1,10 +1,10 @@
 from django.contrib.auth import get_user_model
 from djoser.serializers import UserCreateSerializer
 from drf_extra_fields.fields import Base64ImageField
+from rest_framework import serializers
+
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                             ShoppingCart, Tag)
-from rest_framework import serializers
-from rest_framework.generics import get_object_or_404
 from users.models import Subscription
 
 User = get_user_model()
@@ -116,8 +116,7 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = ('id', 'name', 'image', 'ingredients',
-                  'tags', 'text', 'cooking_time'
-                )
+                  'tags', 'text', 'cooking_time')
         model = Recipe
 
     def validate(self, data):
@@ -137,7 +136,6 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
             if int(amount) <= 0:
                 raise serializers.ValidationError('Проверьте, что количество'
                                                   'ингредиента больше нуля')
-
         tags = data.get('tags')
         if not tags:
             raise serializers.ValidationError({
@@ -190,7 +188,7 @@ class WriteRecipeSerializer(serializers.ModelSerializer):
 
 
 class SubscribtionUserSerializer(serializers.ModelSerializer):
-    recipes = SubscribtionRecipeSerializer(many=True)
+    recipes = serializers.SerializerMethodField()
     is_subscribed = serializers.BooleanField(default=True)
     recipes_count = serializers.SerializerMethodField()
 
@@ -201,6 +199,18 @@ class SubscribtionUserSerializer(serializers.ModelSerializer):
 
     def get_recipes_count(self, obj):
         return obj.recipes.count()
+
+    def get_recipes(self, obj):
+        request = self.context.get('request')
+        recipes_limit = request.query_params.get('recipes_limit')
+        if recipes_limit:
+            recipes = Recipe.objects.filter(
+                author=obj).all()[:(int(recipes_limit))]
+        else:
+            recipes = Recipe.objects.filter(author=obj).all()
+        context = {'request': request}
+        return SubscribtionRecipeSerializer(
+            recipes, many=True, context=context).data
 
 
 class FavoriteRecipeSerializer(serializers.ModelSerializer):

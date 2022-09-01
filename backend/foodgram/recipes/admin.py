@@ -39,16 +39,16 @@ class RecipeIngredientInline(admin.StackedInline):
 
 
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('name', 'author', 'get_Favorite')
+    list_display = ('name', 'author', 'get_favorite')
     search_fields = ('name', 'author', 'tags')
     list_filter = ('author', 'tags', 'name')
     inlines = [RecipeIngredientInline]
     empty_value_display = '-пусто-'
 
-    def get_Favorite(self, obj):
+    def get_favorite(self, obj):
         return Favorite.objects.filter(recipe=obj).count()
 
-    get_Favorite.short_description = 'Количество добавлений в избранное'
+    get_favorite.short_description = 'Количество добавлений в избранное'
 
 
 class FavoriteAdmin(admin.ModelAdmin):
