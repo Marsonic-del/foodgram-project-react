@@ -9,10 +9,9 @@ from rest_framework import status, viewsets
 from rest_framework.generics import get_object_or_404
 from rest_framework.response import Response
 
+from .serializers import FavoriteRecipeSerializer, ShoppingCartRecipeSerializer
 from recipes.models import (Favorite, Ingredient, Recipe, RecipeIngredient,
                             ShoppingCart)
-
-from .serializers import FavoriteRecipeSerializer, ShoppingCartRecipeSerializer
 
 
 def get_pdf_file(content: list):

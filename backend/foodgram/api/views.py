@@ -10,16 +10,14 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
-from users.models import Subscription
-# это isort так делает
 from .filters import RecipeFilter
 from .paginators import CustomPageNumberPagination
 from .permissions import RecipePermissions, UserPermissions
-from .serializers import (IngredientSerializer, SubscribtionRecipeSerializer,
-                          SubscribtionUserSerializer, TagSerializer,
-                          UserSerializer, WriteRecipeSerializer)
+from .serializers import (IngredientSerializer, SubscribtionUserSerializer,
+                          TagSerializer, UserSerializer, WriteRecipeSerializer)
 from .services import ViewsetForRecipes, get_pdf_file
+from recipes.models import Favorite, Ingredient, Recipe, ShoppingCart, Tag
+from users.models import Subscription
 
 User = get_user_model()
 
@@ -76,7 +74,6 @@ class CustomUserViewSet(UserViewSet):
                 status=status.HTTP_400_BAD_REQUEST
                 )
         if request.method == 'POST':
-            recipes_limit = int(request.query_params.get('recipes_limit', 0))
             if Subscription.objects.filter(
                                     author=author, subscriber=request.user
                                     ).exists():
@@ -85,10 +82,8 @@ class CustomUserViewSet(UserViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                     )
             Subscription.objects.create(subscriber=request.user, author=author)
-            response_data = SubscribtionUserSerializer(author).data
-            response_data['recipes'] = SubscribtionRecipeSerializer(
-                                author.recipes.all()[:recipes_limit], many=True
-                                ).data
+            response_data = SubscribtionUserSerializer(
+                author, context={'request': request}).data
             return Response(response_data, status=status.HTTP_201_CREATED)
         if request.method == 'DELETE':
             try:
