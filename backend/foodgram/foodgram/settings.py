@@ -129,3 +129,16 @@ DJOSER = {
         'user_delete': ['api.permissions.UserPermissions'],
     }
 }
+
+'''SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'Token': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'description': 'Вход по токену. Формат ввода: Token <ВАШ ТОКЕН>',
+            'in': 'header',
+        }
+    },
+    'USE_SESSION_AUTH': False,
+    'DEFAULT_AUTO_SCHEMA_CLASS': 'api.swagger.schemas.CustomAutoSchema',
+}'''
