@@ -13,7 +13,7 @@ import {
   Cart,
   SignIn,
   Subscriptions,
-  Favorites,
+  Favorite,
   SingleCard,
   SignUp,
   RecipeEdit,
@@ -206,8 +206,8 @@ function App() {
 
           <ProtectedRoute
             exact
-            path='/favorites'
-            component={Favorites}
+            path='/Favorite'
+            component={Favorite}
             loggedIn={loggedIn}
             updateOrders={updateOrders}
           />

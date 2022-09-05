@@ -1,0 +1,8 @@
+{
+    "python.analysis.extraPaths": [
+        "./backend/venv/Lib/site-packages"
+    ],
+    "python.linting.enabled": false,
+    "python.linting.flake8Enabled": true,
+    "git.ignoreLimitWarning": true
+}

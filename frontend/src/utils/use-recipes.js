@@ -9,7 +9,7 @@ export default function useRecipes () {
   const { value: tagsValue, handleChange: handleTagsChange, setValue: setTagsValue } = useTags()
 
   const handleLike = ({ id, toLike = true }) => {
-    const method = toLike ? api.addToFavorites.bind(api) : api.removeFromFavorites.bind(api)
+    const method = toLike ? api.addToFavorite.bind(api) : api.removeFromFavorite.bind(api)
     method({ id }).then(res => {
       const recipesUpdated = recipes.map(recipe => {
         if (recipe.id === id) {

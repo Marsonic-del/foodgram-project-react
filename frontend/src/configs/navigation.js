@@ -13,7 +13,7 @@ export default [
     auth: true
   },{
     title: 'Избранное',
-    href: '/favorites',
+    href: '/Favorite',
     auth: true
   }, {
     title: 'Список покупок',

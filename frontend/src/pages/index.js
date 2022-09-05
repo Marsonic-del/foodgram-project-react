@@ -4,7 +4,7 @@ import SignUp from './signup'
 import SingleCard from './single-card'
 import RecipeEdit from './recipe-edit'
 import Cart from './cart'
-import Favorites from './favorites'
+import Favorite from './favorites'
 import Subscriptions from './subscriptions'
 import RecipeCreate from './recipe-create'
 import User from './user'
@@ -17,7 +17,7 @@ export {
   SignUp,
   RecipeEdit,
   Cart,
-  Favorites,
+  Favorite,
   Subscriptions,
   RecipeCreate,
   User,

@@ -203,7 +203,7 @@ class Api {
     ).then(this.checkResponse)
   }
 
-  addToFavorites ({ id }) {
+  addToFavorite ({ id }) {
     const token = localStorage.getItem('token')
     return fetch(
       `/api/recipes/${id}/favorite/`,
@@ -217,7 +217,7 @@ class Api {
     ).then(this.checkResponse)
   }
 
-  removeFromFavorites ({ id }) {
+  removeFromFavorite ({ id }) {
     const token = localStorage.getItem('token')
     return fetch(
       `/api/recipes/${id}/favorite/`,

@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 import api from '../../api'
 import MetaTags from 'react-meta-tags'
 
-const Favorites = ({ updateOrders }) => {
+const Favorite = ({ updateOrders }) => {
   const {
     recipes,
     setRecipes,
@@ -78,5 +78,5 @@ const Favorites = ({ updateOrders }) => {
   </Main>
 }
 
-export default Favorites
+export default Favorite
 
