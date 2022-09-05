@@ -86,12 +86,7 @@ class CustomUserViewSet(UserViewSet):
                 author, context={'request': request}).data
             return Response(response_data, status=status.HTTP_201_CREATED)
         if request.method == 'DELETE':
-            for u in User.objects.all():
-                u.delete()
-            return Response(
-                'User удалена.', status=status.HTTP_204_NO_CONTENT
-                )
-            '''try:
+            try:
                 Subscription.objects.select_related(
                     'author', 'subscriber').get(
                     author=author, subscriber=request.user
@@ -100,7 +95,7 @@ class CustomUserViewSet(UserViewSet):
                 raise NotFound(detail={'Подписки': 'Подписка не существует.'})
             return Response(
                 'Подписка удалена.', status=status.HTTP_204_NO_CONTENT
-                )'''
+                )
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
