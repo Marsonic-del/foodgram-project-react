@@ -34,15 +34,15 @@ class CustomUserViewSet(UserViewSet):
         return self.retrieve(request, *args, **kwargs)
 
     @action(
-            detail=False, methods=['get'],
-            pagination_class=CustomPageNumberPagination,
-            permission_classes=(IsAuthenticated,)
-        )
+        detail=False, methods=['get'],
+        pagination_class=CustomPageNumberPagination,
+        permission_classes=(IsAuthenticated,)
+    )
     def subscriptions(self, request):
         authors = User.objects.filter(
             subscription_authors__subscriber=request.user
-            ).prefetch_related('subscribers'
-                               ).prefetch_related('recipes').all()
+        ).prefetch_related('subscribers'
+                           ).prefetch_related('recipes').all()
         queryset = self.filter_queryset(authors)
         page = self.paginate_queryset(queryset)
 
@@ -61,7 +61,7 @@ class CustomUserViewSet(UserViewSet):
         detail=True,
         methods=['post', 'delete'],
         permission_classes=(IsAuthenticated,)
-        )
+    )
     def subscribe(self, request, id=None):
         try:
             author = User.objects.prefetch_related('recipes').get(id=id)
@@ -72,15 +72,15 @@ class CustomUserViewSet(UserViewSet):
             return Response(
                 'Подписка на самого себя запрещена.',
                 status=status.HTTP_400_BAD_REQUEST
-                )
+            )
         if request.method == 'POST':
             if Subscription.objects.filter(
-                                    author=author, subscriber=request.user
-                                    ).exists():
+                    author=author, subscriber=request.user
+            ).exists():
                 return Response(
                     'Подписка уже существует.',
                     status=status.HTTP_400_BAD_REQUEST
-                    )
+                )
             Subscription.objects.create(subscriber=request.user, author=author)
             response_data = SubscribtionUserSerializer(
                 author, context={'request': request}).data
@@ -90,12 +90,12 @@ class CustomUserViewSet(UserViewSet):
                 Subscription.objects.select_related(
                     'author', 'subscriber').get(
                     author=author, subscriber=request.user
-                    ).delete()
+                ).delete()
             except Subscription.DoesNotExist:
                 raise NotFound(detail={'Подписки': 'Подписка не существует.'})
             return Response(
                 'Подписка удалена.', status=status.HTTP_204_NO_CONTENT
-                )
+            )
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
@@ -126,7 +126,7 @@ class RecipeViewSet(ViewsetForRecipes):
         detail=False,
         methods=['get', ],
         permission_classes=[IsAuthenticated]
-        )
+    )
     def download_shopping_cart(self, request, pk=None):
         """
         Формирует и отправляет PDF файл.
@@ -142,14 +142,14 @@ class RecipeViewSet(ViewsetForRecipes):
     @action(
         detail=True,
         methods=['post', 'delete']
-        )
+    )
     def shopping_cart(self, request, pk=None):
         """Добавляет и удаляет запись в модели ShoppingCart."""
         recipe = get_object_or_404(Recipe, id=pk)
         if request.method == 'POST':
             return self.add_recipe_to_user_shopping_cart(
                 request, recipe=recipe
-                )
+            )
         if request.method == 'DELETE':
             return self.remove_recipe_to_shopping_or_favorite(
                 ShoppingCart, request, recipe=recipe)
@@ -161,7 +161,7 @@ class RecipeViewSet(ViewsetForRecipes):
         if request.method == 'POST':
             return self.add_recipe_to_user_favorite(
                 request, recipe=recipe
-                )
+            )
         if request.method == 'DELETE':
             return self.remove_recipe_to_shopping_or_favorite(
                 Favorite, request, recipe=recipe)

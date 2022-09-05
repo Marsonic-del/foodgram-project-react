@@ -21,7 +21,7 @@ def get_pdf_file(content: list):
     reportlab.rl_config.warnOnMissingFontGlyphs = 0
     pdfmetrics.registerFont(
         TTFont('DejaVuSans', 'static/fonts/DejaVuSans.ttf')
-        )
+    )
     c.setFont('DejaVuSans', 10)
     bottom = 800
     for string in content:
@@ -43,7 +43,7 @@ class ViewsetForRecipes(viewsets.ModelViewSet):
             recipe__in=recipes)
         ingredients = Ingredient.objects.filter(
             recipeingredient__in=recipes_with_ingredients
-            ).distinct()
+        ).distinct()
         summed_amount_ingredients = ingredients.annotate(
             amount_sum=Sum(
                 'recipeingredient__amount', filter=Q(
@@ -51,10 +51,10 @@ class ViewsetForRecipes(viewsets.ModelViewSet):
                 )))
         for ingredient in summed_amount_ingredients.all():
             file_content.append(
-                        f'{ingredient.name} '
-                        f'{ingredient.amount_sum} '
-                        f'{ingredient.measurement_unit} '
-                        )
+                f'{ingredient.name} '
+                f'{ingredient.amount_sum} '
+                f'{ingredient.measurement_unit} '
+            )
         return file_content
 
     def add_recipe_to_shopping_or_favorite(
@@ -64,7 +64,7 @@ class ViewsetForRecipes(viewsets.ModelViewSet):
             return Response(
                 'Запись уже существует.',
                 status=status.HTTP_400_BAD_REQUEST
-                )
+            )
         model.objects.create(user=request.user, recipe=recipe)
         serializer = serializer(recipe)
         return Response(serializer.data, status=status.HTTP_201_CREATED)

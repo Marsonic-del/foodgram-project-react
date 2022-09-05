@@ -49,11 +49,10 @@ class Tag(models.Model):
 
 class Recipe(models.Model):
     ingredients = models.ManyToManyField(
-              Ingredient,
-              through='RecipeIngredient',
-              through_fields=('recipe', 'ingredient'))
-    tags = models.ManyToManyField(
-       Tag)
+        Ingredient,
+        through='RecipeIngredient',
+        through_fields=('recipe', 'ingredient'))
+    tags = models.ManyToManyField(Tag)
     name = models.CharField(
         'Название рецепта',
         max_length=200,
@@ -76,7 +75,7 @@ class Recipe(models.Model):
         User,
         related_name='recipes',
         on_delete=models.CASCADE
-        )
+    )
     publish_date = models.DateTimeField(
         'Дата публикации', auto_now_add=True
     )
