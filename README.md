@@ -4,7 +4,7 @@
 
 ## Адрес сайта: http://158.160.6.245/
 
-![workflow](https://github.com/Marsonic-del/yamdb_final/actions/workflows/main.yml/badge.svg)
+![workflow](https://github.com/Marsonic-del/foodgram-project-react/actions/workflows/main.yml/badge.svg)
 
 ## Описание: ##
 ***
